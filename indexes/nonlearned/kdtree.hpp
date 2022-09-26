@@ -97,6 +97,22 @@ struct KDTreeVectorOfVectorsAdaptor
         resultSet.init(out_indices, out_distances_sq);
         index->findNeighbors(resultSet, query_point, nanoflann::SearchParams());
     }
+	
+	inline void rangeQuery(
+        const num_t* query_point, const num_t radius,
+        vector<IndexType>& out_indices, vector<num_t>& out_distances_sq) const
+    {
+		vector<pair<IndexType,num_t> > IndicesDists;
+        nanoflann::RadiusResultSet<num_t, IndexType> resultSet(radius, IndicesDists);
+		index->radiusSearchCustomCallback(query_point, resultSet, anoflann::SearchParams());
+        
+		out_indices.clear();
+		out_distances_sq.clear();
+		for (int i=0; i<IndicesDists.size(); ++i) {
+			out_indices.push_back(IndicesDists[i].first);
+			out_distances_sq.push_back(IndicesDists[i].second);
+		}
+    }
 
     /** @name Interface expected by KDTreeSingleIndexAdaptor
      * @{ */
@@ -180,6 +196,37 @@ Points knn_query(Point& q, unsigned int k) {
     return result;
 }
 
+Points range_query(Box& box) {
+	std::vector<size_t> ret_indexes;
+    std::vector<double> out_dist_sqr;
+	const double EPS = 1e-5;
+	
+	auto start = std::chrono::steady_clock::now();
+	Point q;
+	double radius;
+	
+	for (size_t d=0; d<dim; ++d) {
+		q[d] = (box.min_corner()[d]+box.max_corner()[d]) * 0.5;
+	}
+	radius = EPS + max(bench::common::eu_dist(box.min_corner(), q), 
+					bench::common::eu_dist(box.max_corner(), q));
+    
+    kdtree->rangeQuery(&q[0], radius, ret_indexes, out_dist_sqr);
+	
+	Points result;
+    result.reserve(num_of_results);
+    for (auto idx : ret_indexes) {
+		 if (bench::common::is_in_box(kdtree->m_data[idx], box)) {
+			result.emplace_back(kdtree->m_data[idx]);
+		}
+    }
+    
+	auto end = std::chrono::steady_clock::now();
+    range_count++;
+    range_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    return result;
+}
 
 inline size_t count() {
     return kdtree->kdtree_get_point_count();

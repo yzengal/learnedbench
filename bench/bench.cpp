@@ -235,6 +235,16 @@ int main(int argc, char **argv) {
             bench::query::batch_knn_queries(*(idx_set.kdtree), knn_queries);
             return 0;
         }
+		//// [Yuxiang] add range query and all query
+		if (mode.compare("range") == 0) {
+            bench::query::batch_range_queries(*(idx_set.kdtree), range_queries);
+            return 0;
+        }
+        if (mode.compare("all") == 0) {
+            bench::query::batch_range_queries(*(idx_set.kdtree), range_queries);
+            bench::query::batch_knn_queries(*(idx_set.kdtree), knn_queries);
+            return 0;
+        }
     }
 
     if (index.compare("ann") == 0) {
@@ -251,6 +261,16 @@ int main(int argc, char **argv) {
             bench::query::batch_range_queries(*(idx_set.qdtree), range_queries);
             return 0;
         }
+		//// [Yuxiang] add knn query and all query
+        // if (mode.compare("knn") == 0) {
+            // bench::query::batch_knn_queries(*(idx_set.kdtree), knn_queries);
+            // return 0;
+        // }
+        // if (mode.compare("all") == 0) {
+            // bench::query::batch_range_queries(*(idx_set.kdtree), range_queries);
+            // bench::query::batch_knn_queries(*(idx_set.kdtree), knn_queries);
+            // return 0;
+        // }
     }
     
     if (index.compare("ug") == 0) {
