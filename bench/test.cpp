@@ -23,9 +23,9 @@ std::string get_filename(const std::string& path) {
 int main() {
     vec_of_point_t<2> points;
 
-    std::cout << get_filename("/home/qiyu/learnedbench/data/synthetic/uniform_20m_2_1") << std::endl;
+    std::cout << get_filename("/home/zengyuxiang/learnedbench/data/default/uniform_1m_2_1") << std::endl;
     
-    bench::utils::read_points(points, "/home/qiyu/learnedbench/data/synthetic/uniform_20m_2_1", 20000000);
+    bench::utils::read_points(points, "/home/zengyuxiang/learnedbench/data/default/uniform_1m_2_1", 1000000);
     
     // bench::index::RTree<2, 64> rt(points);
     // bench::query::batch_range_queries(rt, range_queries);
@@ -41,9 +41,6 @@ int main() {
 
     // bench::index::LISA2<4, 10, 64> lisa2(points);
 
-    
-    
-    
     // std::cout << rt.range_query(q).size() << std::endl;
     // std::cout << "build time " << rt.get_build_time() << std::endl;
     // std::cout << "range query time " << rt.get_range_time() << std::endl;
