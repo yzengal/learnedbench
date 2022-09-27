@@ -7,21 +7,23 @@ BENCH2D_OSM="../build/bin/bench2d_osm"
 
 REAL_DATA_PATH="${DATA_PATH}real/"
 SYN_DATA_PATH="${DATA_PATH}synthetic/"
-DEFAULT_SYN_DATA_PATH="${DATA_PATH}synthetic/Default/"
+DEFAULT_SYN_DATA_PATH="${DATA_PATH}synthetic/"
 
 RESULT_PATH="../results/default/"
 
-mkdir ${RESULT_PATH}
+#mkdir ${RESULT_PATH}
 
 #run experiments on default synthetic datasets
-for data in "uniform_20m_2_1" "gaussian_20m_2_1" "lognormal_20m_2_1"
+#for data in "uniform_20m_2_1" "gaussian_20m_2_1" "lognormal_20m_2_1"
+for data in "uniform_1m_2_1"
 do
-    for index in "rtree" "rstar" "zm" "mli" "lisa" "fs"
+    for index in "rtree"
+#    for index in "rtree" "rstar" "zm" "mli" "lisa" "fs"
     do
         echo "Benchmark ${index} dataset ${data}"
-        ${BENCH2D_DEFAULT} ${index} "${DEFAULT_SYN_DATA_PATH}$data" 20000000 all > "${RESULT_PATH}${index}_${data}"
+        ${BENCH2D_DEFAULT} ${index} "${DEFAULT_SYN_DATA_PATH}$data" 1000000 all > "${RESULT_PATH}${index}_${data}"
     done
-
+    continue
     for index in "kdtree" "ann" 
     do
         echo "Benchmark ${index} dataset ${data}"
@@ -34,7 +36,7 @@ do
         ${BENCH2D_DEFAULT} ${index} "${DEFAULT_SYN_DATA_PATH}$data" 20000000 range > "${RESULT_PATH}${index}_${data}"
     done
 done
-
+exit
 # run experiments on FourSquare
 data="fs"
 for index in "rtree" "rstar" "zm" "mli" "lisa"

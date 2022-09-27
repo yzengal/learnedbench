@@ -56,7 +56,7 @@ targets: $(LIBDIR)/$(ANNLIB)
 $(LIBDIR)/$(ANNLIB): $(OBJECTS)
 	$(MAKELIB) $(ANNLIB) $(OBJECTS)
 	$(RANLIB) $(ANNLIB)
-	cp $(ANNLIB) $(LIBDIR)
+	mv $(ANNLIB) $(LIBDIR)
 
 #-----------------------------------------------------------------------------
 # Make object files

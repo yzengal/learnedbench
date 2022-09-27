@@ -16,11 +16,11 @@ option(PROFILE "whether starting heap profile" OFF)
 option(RSMI "whether building RSMI" OFF)
 
 
-set(BOOST_ROOT "/home/qiyu/boost_1_79_0")
-set(Boost_INCLUDE_DIR "/home/qiyu/boost_1_79_0")
-set(Boost_LIBRARY_DIR "/home/qiyu/boost_1_79_0/stage/lib")
+set(BOOST_ROOT "/home/zengyuxiang/boost_1_80_0")
+set(Boost_INCLUDE_DIR "/usr/local/include/boost")
+set(Boost_LIBRARY_DIR "/usr/local/lib")
 
-SET(EXECUTABLE_OUTPUT_PATH "/home/qiyu/learnedbench/build/bin")
+SET(EXECUTABLE_OUTPUT_PATH "/home/zengyuxiang/learnedbench/build/bin")
 
 # check dependencies
 find_package(TPIE REQUIRED)
@@ -38,21 +38,21 @@ if(RSMI)
   set(CMAKE_CXX_STANDARD 14)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-  set(TORCH_PATH "/home/qiyu/libtorch")
+  set(TORCH_PATH "/home/zengyuxiang/libtorch")
   list(APPEND CMAKE_PREFIX_PATH TORCH_PATH)
   find_package(Torch REQUIRED PATHS ${TORCH_PATH} CONFIG)
 
   # RSMI library path
-  set(RSMI_PATH "/home/qiyu/learnedbench/indexes/rsmi")
+  set(RSMI_PATH "/home/zengyuxiang/learnedbench/indexes/rsmi")
 
   include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS} ${RSMI_PATH})
 
   if(PROFILE)
     add_executable(bench_rsmi_hp bench/bench_rsmi.cpp)
-    target_link_libraries(bench_rsmi_hp ${TPIE_LIBRARIES} ${TORCH_LIBRARIES} Boost::system Boost::filesystem pthread "${RSMI_PATH}/build/librsmi.a" -ltcmalloc)
+    target_link_libraries(bench_rsmi_hp ${TPIE_LIBRARIES} ${TORCH_LIBRARIES} Boost::system Boost::filesystem pthread "${RSMI_PATH}/build/librsmi.a" -ltcmalloc -lsnappy)
   else()
     add_executable(bench_rsmi bench/bench_rsmi.cpp)
-    target_link_libraries(bench_rsmi ${TPIE_LIBRARIES} ${TORCH_LIBRARIES} Boost::system Boost::filesystem pthread "${RSMI_PATH}/build/librsmi.a")
+    target_link_libraries(bench_rsmi ${TPIE_LIBRARIES} ${TORCH_LIBRARIES} Boost::system Boost::filesystem pthread "${RSMI_PATH}/build/librsmi.a" -lsnappy)
   endif()
 
 else()
@@ -61,16 +61,16 @@ else()
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
   # ANN library path
-  set(ANN_PATH "/home/qiyu/learnedbench/indexes/ann_1.1.2")
+  set(ANN_PATH "/home/zengyuxiang/learnedbench/indexes/ann_1.1.2")
 
   include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS} ${RSMI_PATH} ${ANN_PATH})
 
   add_executable(datagen utils/datagen.cpp)
-  target_link_libraries(datagen ${TPIE_LIBRARIES} Boost::program_options pthread)
+  target_link_libraries(datagen ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
 
   if(PROFILE)
     add_executable(bench2d_hp bench/bench.cpp)
-    target_link_libraries(bench2d_hp ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc)
+    target_link_libraries(bench2d_hp ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
   else()
     # add_executable(bench2d_default bench/bench.cpp)
     # target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
@@ -181,11 +181,11 @@ else()
     # target_compile_definitions(bench3d_e1024_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20 INDEX_ERROR_THRESHOLD=1024)
 
     add_executable(bench2d_default bench/bench.cpp)
-    target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
+    target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -lsnappy)
     target_compile_definitions(bench2d_default PUBLIC PARTITION_NUM=100)
 
     add_executable(bench3d_toronto bench/bench.cpp)
-    target_link_libraries(bench3d_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
+    target_link_libraries(bench3d_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -lsnappy)
     target_compile_definitions(bench3d_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
 
     

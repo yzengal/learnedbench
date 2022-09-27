@@ -228,6 +228,7 @@ Points range_query(Box& box) {
     return result;
 }
 
+
 inline size_t count() {
     return kdtree->kdtree_get_point_count();
 }

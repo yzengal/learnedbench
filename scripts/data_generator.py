@@ -9,7 +9,7 @@ from pandas.core.reshape.merge import merge
 np.random.seed(999)
 
 
-DATA_PATH = "./data/"
+DATA_PATH = "../data/"
 
 
 # generate n d-dimensional uniform points in range [0, r]

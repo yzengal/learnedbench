@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
 #ifdef HEAP_PROFILE
     // directly exit if heap profiling is enabled
-    bench::index::RSMIWrapper<DIM> rsmi(points, model_path);
+    bench::index::RSMIWrapper<BENCH_DIM> rsmi(points, model_path);
     return 0;
 #endif
 
