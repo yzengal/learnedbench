@@ -19,7 +19,7 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
-
+#include <unordered_set>
 
 
 namespace bench { namespace index {
@@ -29,16 +29,19 @@ template<size_t dim, size_t K>
 class UG : public BaseIndex {
 
 using Point = point_t<dim>;
-using Points = std::vector<Point>;
-using Range = std::pair<size_t, size_t>;
 using Box = box_t<dim>;
+using BoxID_t = int;
+using Boxes = std::vector<Box>;
+using Range = std::pair<size_t, size_t>;
+
+Boxes& _data;
 
 public:
-    UG(Points& points) {
+    UG(Boxes& boxes):_data(boxes) {
         std::cout << "Construct Uniform Grid K=" << K << std::endl;
         auto start = std::chrono::steady_clock::now();
 
-        this->num_of_points = points.size();
+        this->num_of_boxes = boxes.size();
 
         // dimension offsets when computing bucket ID
         for (size_t i=0; i<dim; ++i) {
@@ -49,12 +52,13 @@ public:
         std::fill(mins.begin(), mins.end(), std::numeric_limits<double>::max());
         std::fill(maxs.begin(), maxs.end(), std::numeric_limits<double>::min());
 
-        for (size_t i=0; i<dim; ++i) {
-            for (auto& p : points) {
-                mins[i] = std::min(p[i], mins[i]);
-                maxs[i] = std::max(p[i], maxs[i]);
-            }
-        }
+		for (auto& box : boxes) {
+			Box p = box.min_corner(), q = box.max_corner();
+			for (size_t i=0; i<dim; ++i) {
+				mins[i] = std::min(std::min(p[i], q[i]), mins[i]);
+				maxs[i] = std::max(std::max(p[i], q[i]), maxs[i]);
+			}
+		}
 
         // widths of each dimension
         for (size_t i=0; i<dim; ++i) {
@@ -62,8 +66,10 @@ public:
         }
         
         // insert points to buckets
-        for (auto p : points) {
-            buckets[compute_id(p)].emplace_back(p);
+        for (BoxID_t idx=boxes.size()-1; idx>=0; --idx) {
+			auto gids = compute_ids(boxes[idx]);
+			for (auto gid : gids)
+				buckets[gid].emplace_back(ix);
         }
 
         auto end = std::chrono::steady_clock::now();
@@ -73,12 +79,13 @@ public:
     }
 
 
-    Points range_query(Box& box) {
+    Boxes range_query(Box& box) {
         auto start = std::chrono::steady_clock::now();
 
         // bucket ranges that intersect the query box
         std::vector<Range> ranges;
-
+		unordered_set<BoxID_t> visit;
+		
         // search range on the 1-st dimension
         ranges.emplace_back(std::make_pair(get_dim_idx(box.min_corner(), 0), get_dim_idx(box.max_corner(), 0)));
         
@@ -99,7 +106,7 @@ public:
         }
 
         // Points candidates;
-        Points result;
+        Boxes results;
 
         // find candidate points
         for (auto range : ranges) {
@@ -107,9 +114,13 @@ public:
             auto end_idx = range.second;
 
             for (auto idx=start_idx; idx<=end_idx; ++idx) {
-                for (auto cand : this->buckets[idx]) {
-                    if (bench::common::is_in_box(cand, box)) {
-                        result.emplace_back(cand);
+                for (BoxID_t candBoxID : this->buckets[idx]) {
+					Box& candBox = _data[candBoxID];
+                    if (bench::common::is_intersect_box(candBox, box)) {
+						if (visit.count(candBoxID) == 0) 
+							visit.insert(candBoxID);
+							result.emplace_back(candBox);
+						}
                     }
                 }
             }
@@ -119,28 +130,32 @@ public:
         range_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         range_count ++;
         
-        return result;
+        return results;
     }
 
     inline size_t count() {
-        return this->num_of_points;
+        return this->num_of_boxes;
     }
 
     inline size_t index_size() {
-        return dim * (3 * sizeof(double) + sizeof(size_t)) + this->buckets.size() * sizeof(Points);
+        size_t ret = dim * (3 * sizeof(double) + sizeof(size_t)); 
+		for (int i=buckets.size()-1; i>=0; --i) {
+			ret += sizeof(BoxID_t)*buckets[i].size() + sizeof(size_t) + sizeof(void*);
+		}
+		return ret;
     }
 
 
 private:
-    size_t num_of_points;
-    std::array<Points, common::ipow(K, dim)> buckets;
+    size_t num_of_boxes;
+    std::array<vector<BoxID_t>, common::ipow(K, dim)> buckets;
     std::array<double, dim> mins;
     std::array<double, dim> maxs;
     std::array<double, dim> widths;
     std::array<size_t, dim> dim_offset;
 
     // compute the index on d-th dimension of a given point
-    inline size_t get_dim_idx(Point& p, const size_t& d) {
+    inline size_t get_dim_idx(const Point& p, const size_t& d) {
         if (p[d] <= mins[d]) {
             return 0;
         } else if (p[d] >= maxs[d]) {
@@ -151,7 +166,7 @@ private:
     }
 
     // compute the bucket ID of a given point
-    inline size_t compute_id(Point& p) {
+    inline size_t compute_id(const Point& p) {
         size_t id = 0;
 
         for (size_t i=0; i<dim; ++i) {
@@ -160,6 +175,30 @@ private:
         }
 
         return id;
+    }
+	
+    // compute the bucket ID of a given box
+    inline vector<size_t> compute_ids(const Box& box) {
+		vector<size_t> ret;
+		const Point mxp = box.max_corner(), mnp = box.min_corner();
+		Point p;
+		
+		for (int st=0; st<(1<<dim); ++st) {
+			for (int i=0; i<dim; ++i) {
+				p[i] = (st & (1<<i)) ? mxp[i] : mnp[i];
+			}	
+			auto id = compute_id(p);
+			bool flag = true;
+			for (auto st : ret) {
+				if (st == id) {
+					flag = false;
+					break;
+				}
+			}
+			if (flag) ret.emplace_back(id);
+		}
+		
+        return ret;
     }
 };
 

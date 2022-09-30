@@ -22,6 +22,7 @@ namespace bench { namespace index {
 		using Boxes = std::vector<box_t<dim>>;
 		using Counts = std::vector<int>;
 		using Indexes = std::vector<int>;
+		using BoxID_t = int;
 		
 		public:
 		static const int CHILD_SIZE = ((size_t)1)<<dim;
@@ -139,7 +140,7 @@ namespace bench { namespace index {
 				for (int i=0; i<dim; ++i) {
 					p[i] = (st & (1<<i)) ? mxp[i] : mnp[i];
 				}
-				int oct = getOctantContainingPoint(p);
+				auto oct = getOctantContainingPoint(p);
 				bool flag = true;
 				for (auto st : ret) {
 					if (st == oct) {
@@ -241,23 +242,23 @@ namespace bench { namespace index {
 		
 		Boxes range_query(const Box& box) {
 			Boxes results;
-			std::unordered_set<int> tb;
-			getBoxesInsideBox(box, results, tb);
+			std::unordered_set<int> visit;
+			getBoxesInsideBox(box, results, visit);
 			return results;
 		}
 		
 		// This is a really simple routine for querying the tree for points
 		// within a bounding box defined by min/max points (bmin, bmax)
 		// All results are pushed into 'results'
-		void getBoxesInsideBox(const Box& box, Boxes& results, std::unordered_set<int>& tb) {
+		void getBoxesInsideBox(const Box& box, Boxes& results, std::unordered_set<int>& visit) {
 			// If we're at a leaf node, just see if the current data point is inside
 			// the query bounding box
 			if(isLeafNode()) {
 				if(!data.empty()) {
 					for (int i=data.size()-1; i>=0; --i) {
 						if (bench::common::is_intersect_box<dim>(data[i], box)) {
-							if (tb.count(ids[i]) == 0) {
-								tb.insert(ids[i]);
+							if (visit.count(ids[i]) == 0) {
+								visit.insert(ids[i]);
 								results.insert(results.end(), cnts[i], data[i]);
 							}
 						}

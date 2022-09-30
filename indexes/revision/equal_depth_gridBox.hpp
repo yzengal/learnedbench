@@ -1,239 +1,167 @@
-#include <bits/stdc++.h>
-using namespace std;
+#pragma once
 
-#include "Octree.hpp"
-#include "fullscan.hpp"
-#include "type.hpp"
-#include "common.hpp"
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <iostream>
+#include <map>
+#include <utility>
+#include <vector>
 
-const int MAXL = 128;
-const int DIM = 3;
-const int n = 10000;
-const int m = 200;
-const int K = 10;
-std::vector<point_t<DIM> > points;
-std::vector<box_t<DIM> > boxes;
+#include "../base_index.hpp"
+#include "../../utils/type.hpp"
+#include "../../utils/common.hpp"
 
-template<size_t dim>
-static std::vector<point_t<dim>> sample_points(size_t n=100) {
-	using Point = point_t<dim>;
-	
-    // seed the generator
-    std::mt19937 gen(std::random_device{}()); 
-    std::uniform_int_distribution<> uint_dist(0, MAXL);
 
-    // generate random indices
-    std::vector<point_t<dim>> samples;
-    samples.reserve(n);
+namespace bench { namespace index {
 
-    for (size_t i=0; i<n; ++i) {
-		Point p;
-		for (int j=0; j<dim; ++j) {
-			p[j] = uint_dist(gen);
-		}
-        samples.emplace_back(p);
+template<size_t Dim, size_t K>
+class EDG : public BaseIndex {
+
+using Point = point_t<Dim>;
+using Points = std::vector<Point>;
+using Box = box_t<Dim>;
+
+using Range = std::pair<size_t, size_t>;
+
+using Partition = std::array<double, K>;
+using Partitions = std::array<Partition, Dim>;
+
+public:
+EDG(Points& points) {
+    std::cout << "Construct Euqal-Depth Grid K=" << K << std::endl;
+    auto start = std::chrono::steady_clock::now();
+
+    // dimension offsets when computing bucket ID
+    for (size_t i=0; i<Dim; ++i) {
+        this->dim_offset[i] = bench::common::ipow(K, i);
     }
 
-    return samples;
-}
+    this->N = points.size();
+    auto bucket_size = N / K;
 
-template<size_t dim>
-static box_t<dim> sample_range() {
-	using Point = point_t<dim>;
-	
-    // seed the generator
-    std::mt19937 gen(std::random_device{}()); 
-    std::uniform_int_distribution<> uint_dist(0, MAXL);
+    // compute equal depth partition boundaries 
+    for (size_t i=0; i<Dim; ++i) {
+        std::vector<double> dim_vector;
+        dim_vector.reserve(N);
 
-	Point p;
-	for (int j=0; j<dim; ++j) {
-		p[j] = uint_dist(gen);
-	}
-	
-	Point q = p;
-	std::uniform_int_distribution<> uint_radius((int)sqrt(MAXL), MAXL);
-	for (int j=0; j<dim; ++j) {
-		q[j] += uint_radius(gen);;
-	}
-	
-    return box_t<dim>(p, q);
-}
+        for (const auto& p : points) {
+            dim_vector.emplace_back(p[i]);
+        }
+        std::sort(dim_vector.begin(), dim_vector.end());
 
-void init() {
-	points = sample_points<DIM>(n);
-	for (int i=0; i<m; ++i) {
-		box_t<DIM> box = sample_range<DIM>();
-		boxes.push_back(box);
-	}
-}
+        for (size_t j=0; j<K; ++j) {
+            partitions[i][j] = dim_vector[j * bucket_size];
+        }
+    }
 
-// Query using brute-force
-vector<int> testNaive() {
-	auto start = std::chrono::steady_clock::now();
-	vector<int> ret;
-	
-	bench::index::FullScan<DIM> fs(points);
-	for (int j=0; j<m; ++j) {
-		auto results = fs.range_query(boxes[j]);
-		cout << results.size() << " ";
-		// bench::common::print_box<DIM>(boxes[j]);
-		ret.push_back((int) results.size());
-	}
-	cout << endl;
-	
-	auto end = std::chrono::steady_clock::now();
-	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-	cout << "[testNaive] " << T << "ms" << endl;
-	
-	return ret;
-}
+    for (auto& p : points) {
+        buckets[compute_id(p)].emplace_back(p);
+    }
 
-// Query using Octree
-vector<int> testOctree() {
-	auto start = std::chrono::steady_clock::now();
-	vector<int> ret;
-	
-	bench::index::Octree<DIM,5> octree(points);
-	for (int j=0; j<m; ++j) {
-		auto results = octree.range_query(boxes[j]);
-		cout << results.size() << " ";
-		// bench::common::print_box<DIM>(boxes[j]);
-		ret.push_back((int) results.size());
-	}
-	cout << endl;
-
-	auto end = std::chrono::steady_clock::now();
-	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-	cout << "[testOctree] " << T << "ms" << endl;
-	
-	return ret;
-}
-
-// Query using brute-force
-vector<double> testNaiveKNN() {
-	auto start = std::chrono::steady_clock::now();
-	vector<double> ret;
-	
-	bench::index::FullScan<DIM> fs(points);
-	for (int j=0; j<m; ++j) {
-		auto q = boxes[j].min_corner();
-		auto results = fs.knn_query(q, K);
-		double knnd = 0.0;
-		for (auto point : results) {
-			double tmp = bench::common::eu_dist(point, q);
-			if (tmp > knnd)
-				knnd = tmp;
-		}
-		cout << knnd << " ";
-		ret.push_back(knnd);
-	}
-	cout << endl;
-	
-	auto end = std::chrono::steady_clock::now();
-	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-	cout << "[testNaive] " << T << "ms" << endl;
-	
-	return ret;
-}
-
-// Query using Octree
-vector<double> testOctreeKNN() {
-	auto start = std::chrono::steady_clock::now();
-	vector<double> ret;
-	
-	bench::index::Octree<DIM,5> octree(points);
-	for (int j=0; j<m; ++j) {
-		auto q = boxes[j].min_corner();
-		auto results = octree.knn_query(q, K);
-		double knnd = 0.0;
-		for (auto point : results) {
-			double tmp = bench::common::eu_dist(point, q);
-			if (tmp > knnd)
-				knnd = tmp;
-		}
-		cout << knnd << " ";
-		ret.push_back(knnd);
-	}
-	cout << endl;
-
-	auto end = std::chrono::steady_clock::now();
-	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-	cout << "[testOctree] " << T << "ms" << endl;
-	
-	return ret;
-}
-
-// Query using Octree
-void testUpdate() {
-	auto start = std::chrono::steady_clock::now();
-	const int PREN = 100;
-	const int UPDATEN = 30;
-	
-	vector<point_t<DIM> > P;
-	for (int i=0; i<PREN; ++i)
-		P.emplace_back(points[i]);
-	
-	bench::index::Octree<DIM,1> octree(P);
-	for (int j=0; j<m; ++j) {
-		bool flag = true;
-		
-		for (int i=0; i<UPDATEN; ++i) {
-			int id = rand() % PREN;
-			auto q = points[id];
-			if (rand()%2 == 1) {// insert
-				P.emplace_back(q);
-				octree.insert(q);
-				
-			} else {// delete
-				bool _erased = false;
-				
-				for (int k=0; k<P.size(); ++k) {
-					if (bench::common::is_equal_point(P[k], q)) {
-						_erased = true;
-						P[k] = *P.rbegin();
-						P.pop_back();
-						break;
-					}
-				}
-				
-				bool erased = octree.erase(q);
-				// cout << _erased << " " << erased << " ";
-				if (_erased != erased) {
-					flag = false;
-				}
-			}
-		}
-		
-		
-		bench::index::FullScan<DIM> fs(P);
-		auto results = fs.range_query(boxes[j]);
-		auto _results = octree.range_query(boxes[j]);
-		
-		cout << (flag ? "True" : "False") << " " << results.size() << " " << _results.size() << endl;
-	}
-	cout << endl;
-
-	auto end = std::chrono::steady_clock::now();
-	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-	cout << "[testOctree] " << T << "ms" << endl;
+    auto end = std::chrono::steady_clock::now();
+    build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Build Time: " << get_build_time() << " [ms]" << std::endl;
+    std::cout << "Index Size: " << index_size() << " Bytes" << std::endl;
 }
 
 
-int main(int argc, char **argv) {
-	init();
-	// auto va = testNaive();
-	// auto vb = testOctree();
+Points range_query(Box& box) {
+    auto start = std::chrono::steady_clock::now();
+    // bucket ranges that intersect the query box
+    std::vector<Range> ranges;
 
-	// bool flag = true;
-	// for (int i=0; i<m; ++i) {
-		// if (va[i] != vb[i]) {
-			// flag = false;
-			// break;
-		// }
-	// }
-	// cout << (flag ? "True" : "False") << endl;
-	
-	testUpdate();
+    // search range on the 1-st dimension
+    ranges.emplace_back(get_dim_idx(box.min_corner(), 0), get_dim_idx(box.max_corner(), 0));
+    
+    // find all intersect ranges
+    for (size_t i=1; i<Dim; ++i) {
+        auto start_idx = get_dim_idx(box.min_corner(), i);
+        auto end_idx = get_dim_idx(box.max_corner(), i);
 
-	return 0;
+        std::vector<Range> temp_ranges;
+        for (auto idx=start_idx; idx<=end_idx; ++idx) {
+            for (size_t j=0; j<ranges.size(); ++j) {
+                temp_ranges.emplace_back(ranges[j].first + idx*dim_offset[i], ranges[j].second + idx*dim_offset[i]);
+            }
+        }
+
+        // update the range vector
+        ranges = temp_ranges;
+    }
+
+    // Points candidates;
+    Points result;
+
+    // find candidate points
+    for (auto& range : ranges) {
+        auto start_idx = range.first;
+        auto end_idx = range.second;
+
+        for (auto idx=start_idx; idx<=end_idx; ++idx) {
+            for (auto& cand : this->buckets[idx]) {
+                if (bench::common::is_in_box(cand, box)) {
+                    result.emplace_back(cand);
+                }
+            }
+        }
+    }
+
+    auto end = std::chrono::steady_clock::now();
+    range_count ++;
+    range_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    return result;
 }
+
+inline size_t count() {
+    return this->N;
+}
+
+inline size_t index_size() {
+    return Dim * K * sizeof(double) + Dim * sizeof(size_t) + buckets.size() * sizeof(Points);
+}
+
+void print_partitions() {
+    for (auto& partition : partitions) {
+        for (auto p : partition) {
+            std::cout << p << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+    
+private:
+size_t N;
+std::array<Points, bench::common::ipow(K, Dim)> buckets;
+std::array<size_t, Dim> dim_offset;
+Partitions partitions; // bucket boundaries on each dimension
+
+// locate the bucket on d-th dimension using binary search
+inline size_t get_dim_idx(Point& p, size_t d) {
+    if (p[d] <= partitions[d][0]) {
+        return 0;
+    } else {
+        auto upper = std::upper_bound(partitions[d].begin(), partitions[d].end(), p[d]);
+        return (size_t) (upper - partitions[d].begin() - 1);
+    }
+}
+
+inline size_t compute_id(Point& p) {
+    size_t id = 0;
+
+    for (size_t i=0; i<Dim; ++i) {
+        auto current_idx = get_dim_idx(p, i);
+        id += current_idx * dim_offset[i];
+    }
+
+    return id;
+}
+
+};
+
+}
+}
+
+
+
