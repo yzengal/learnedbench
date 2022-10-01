@@ -7,6 +7,7 @@
 
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
+#include "base_index.hpp"
 
 // #define LOCAL_DEBUG
 
@@ -16,13 +17,13 @@ namespace bench { namespace index {
 	 *
 	 */
 	template<size_t dim=2, size_t MaxElements=1>
-	class OctreeBox {
+	class OctreeBoxNode {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;
+		using BoxID_t = int;
 		using Boxes = std::vector<box_t<dim>>;
 		using Counts = std::vector<int>;
-		using Indexes = std::vector<int>;
-		using BoxID_t = int;
+		using Indexes = std::vector<BoxID_t>;
 		
 		public:
 		static const int CHILD_SIZE = ((size_t)1)<<dim;
@@ -35,8 +36,7 @@ namespace bench { namespace index {
 
 		// The tree has up to eight children and can additionally store
 		// a point, though in many applications only, the leaves will store data.
-		OctreeBox *children[CHILD_SIZE]; 	//! Pointers to child octants
-		Boxes data;   				 	//! Data point to be stored at a node
+		OctreeBoxNode *children[CHILD_SIZE]; 	//! Pointers to child octants
 		Counts cnts; 					// number of same data points
 		Indexes	ids;					// ID of data points
 
@@ -50,8 +50,8 @@ namespace bench { namespace index {
 		 */
 
 		public:
-		OctreeBox(const Boxes& boxes) {
-			int n = boxes.size();
+		OctreeBoxNode(const Boxes& boxes) {
+			size_t n = boxes.size();
 			MAX_DEPTH = max(1.0, 1.0+log2(n*1.0));
 			
 			origin.fill(0.0);
@@ -75,8 +75,7 @@ namespace bench { namespace index {
 			bench::common::print_point<dim>(halfDimension, true);
 			#endif
 			
-			// Initially, there are no children
-			data.clear();
+			// Initially, there are no childrenx
 			cnts.clear();
 			ids.clear();
 			for(int i=0; i<CHILD_SIZE; ++i) 
@@ -84,7 +83,7 @@ namespace bench { namespace index {
 			
 			int idx = 0;
 			for (auto box : boxes) {
-				insert(box, idx++);
+				insert(boxes, idx++);
 				#ifdef LOCAL_DEBUG
 				std::cout << idx++ << " ";
 				bench::common::print_box(box, true);
@@ -93,27 +92,34 @@ namespace bench { namespace index {
 			}
 		}
 		
-		OctreeBox(const Point& _origin, const Point& _halfDimension) 
+		OctreeBoxNode(const Point& _origin, const Point& _halfDimension) 
 			: origin(_origin), halfDimension(_halfDimension) {
 				// Initially, there are no children
-				data.clear();
 				cnts.clear();
 				ids.clear();
 				for(int i=0; i<CHILD_SIZE; ++i) 
 					children[i] = NULL;
 			}
 
-		OctreeBox(const OctreeBox& copy)
-			: origin(copy.origin), halfDimension(copy.halfDimension), data(copy.data) {
-				
-			}
-
-		~OctreeBox() {
+		~OctreeBoxNode() {
 			// Recursively destroy octants
 			for(int i=0; i<CHILD_SIZE; ++i) {
 				if (children[i] != NULL)
 					delete children[i];
 			}
+		}
+		
+		inline size_t index_size() {
+			size_t ret = sizeof(OctreeBoxNode*)*CHILD_SIZE + sizeof(double)*dim*2;
+			
+			ret += sizeof(int*) + sizeof(int) + sizeof(int)*ids.size();
+			ret += sizeof(BoxID_t*) + sizeof(int) + sizeof(BoxID_t)*ids.size();
+			for(int i=0; i<CHILD_SIZE; ++i) {
+				if (children[i] != NULL)
+					ret += children[i]->index_size();
+			}
+			
+			return ret;
 		}
 
 		bool isLeafNode() const {
@@ -163,7 +169,8 @@ namespace bench { namespace index {
 			return oct;
 		}
 		
-		void insert(const Box& box, int pid, int num=1, int dep=0) {
+		void insert(const Boxes& boxes, int pid, int num=1, int dep=0) {
+			const Box& box = boxes[pid];
 			
 			#ifdef LOCAL_DEBUG
 			for (int i=0; i<dep; ++i) std::cout << " ";
@@ -173,20 +180,19 @@ namespace bench { namespace index {
 			bench::common::print_point<dim>(origin, false);
 			std::cout << " ";
 			bench::common::print_point<dim>(halfDimension, false);
-			std::cout << " " << (isLeafNode() ? "Leaf" : "Non-Leaf") << " " << data.size() << endl;	
+			std::cout << " " << (isLeafNode() ? "Leaf" : "Non-Leaf") << " " << ids.size() << endl;	
 			#endif			
 			// If this node doesn't have a data point yet assigned 
 			// and it is a leaf, then we're done!
 			if(isLeafNode()) {
 				// check if the new point equals to any current point
-				for (int i=0; i<data.size(); ++i) {
-					if (bench::common::is_equal_box<dim>(data[i], box)) {
+				for (int i=ids.size()-1; i>=0; --i) {
+					if (bench::common::is_equal_box<dim>(boxes[ids[i]], box)) {
 						++cnts[i];
 						return ;
 					}		
 				}
-				if(dep>=MAX_DEPTH || data.size()<MaxElements) {
-					data.emplace_back(box);
+				if(dep>=MAX_DEPTH || ids.size()<MaxElements) {
 					cnts.emplace_back(num);
 					ids.emplace_back(pid);
 				} else {
@@ -196,9 +202,6 @@ namespace bench { namespace index {
 					// this new data point
 
 					// Save this data point that was here for a later re-insert
-					// OctreePoint *oldPoint = data;
-					// data = NULL;
-
 					// Split the current node and create new empty trees for each
 					// child octant.
 					Point newHalfDimension = halfDimension;
@@ -210,56 +213,58 @@ namespace bench { namespace index {
 						for (int i=0; i<dim; ++i) {
 							newOrigin[i] += halfDimension[i] * ((j&(1<<i)) ? .5f : -.5f);
 						}						
-						children[j] = new OctreeBox(newOrigin, newHalfDimension);
+						children[j] = new OctreeBoxNode(newOrigin, newHalfDimension);
 					}
 
 					// Re-insert the old point, and insert this new point
 					// (We wouldn't need to insert from the root, because we already
 					// know it's guaranteed to be in this section of the tree)
-					for (int i=0; i<data.size(); ++i) {
-						vector<int> octs = getOctantContainingPoints(data[i]);
+					for (int i=0; i<ids.size(); ++i) {
+						const Box& box = boxes[ids[i]];
+						std::vector<int> octs = getOctantContainingPoints(box);
 						for (auto oct : octs) {		
-							children[oct]->insert(data[i], ids[i], cnts[i], dep+1);
+							children[oct]->insert(boxes, ids[i], cnts[i], dep+1);
 						}
 					}
-					data.clear();
 					cnts.clear();
 					ids.clear();
-					vector<int> octs = getOctantContainingPoints(box);
+					std::vector<int> octs = getOctantContainingPoints(box);
 					for (auto oct : octs) {	
-						children[oct]->insert(box, pid, num, dep+1);
+						children[oct]->insert(boxes, pid, num, dep+1);
 					}
 				}
 			} else {
 				// We are at an interior node. Insert recursively into the 
 				// appropriate child octant
-				vector<int> octs = getOctantContainingPoints(box);
+				std::vector<int> octs = getOctantContainingPoints(box);
 				for (auto oct : octs) {
-					children[oct]->insert(box, pid, num, dep+1);
+					children[oct]->insert(boxes, pid, num, dep+1);
 				}
 			}
 		}
 		
-		Boxes range_query(const Box& box) {
-			Boxes results;
-			std::unordered_set<int> visit;
-			getBoxesInsideBox(box, results, visit);
+		std::vector<BoxID_t> range_query(const Boxes& boxes, const Box& box) {
+			std::unordered_set<BoxID_t> visit;
+			std::vector<BoxID_t> results;
+			
+			getBoxesInsideBox(boxes, box, results, visit);
+			
 			return results;
 		}
 		
 		// This is a really simple routine for querying the tree for points
 		// within a bounding box defined by min/max points (bmin, bmax)
 		// All results are pushed into 'results'
-		void getBoxesInsideBox(const Box& box, Boxes& results, std::unordered_set<int>& visit) {
+		void getBoxesInsideBox(const Boxes& boxes, const Box& box, std::vector<BoxID_t>& results, std::unordered_set<BoxID_t>& visit) {
 			// If we're at a leaf node, just see if the current data point is inside
 			// the query bounding box
 			if(isLeafNode()) {
-				if(!data.empty()) {
-					for (int i=data.size()-1; i>=0; --i) {
-						if (bench::common::is_intersect_box<dim>(data[i], box)) {
+				if(!ids.empty()) {
+					for (int i=ids.size()-1; i>=0; --i) {
+						if (bench::common::is_intersect_box<dim>(boxes[ids[i]], box)) {
 							if (visit.count(ids[i]) == 0) {
 								visit.insert(ids[i]);
-								results.insert(results.end(), cnts[i], data[i]);
+								results.insert(results.end(), cnts[i], ids[i]);
 							}
 						}
 					}
@@ -281,15 +286,84 @@ namespace bench { namespace index {
 					Box cbox(cmin, cmax);
 					if (!bench::common::is_intersect_box<dim>(cbox, box)) continue;
 					
-					children[j]->getBoxesInsideBox(box, results, tb);
+					children[j]->getBoxesInsideBox(boxes, box, results, visit);
 				} 
 			}
 		}
 
 	};
-	
 	template<size_t dim, size_t MaxElements>
-	int OctreeBox<dim,MaxElements>::MAX_DEPTH;
+	int OctreeBoxNode<dim,MaxElements>::MAX_DEPTH;
+	
+	template<size_t dim=2, size_t MaxElements=1>
+	class OctreeBox : public BaseIndex {
+		using Point = point_t<dim>;
+		using Box = box_t<dim>;
+		using Boxes = std::vector<box_t<dim>>;
+		using BoxID_t = int;
+		using OctreeBoxNode_t = OctreeBoxNode<dim, MaxElements>;
+		
+		private:
+		size_t num_of_boxes;
+		OctreeBoxNode_t *root;
+		Boxes& _data;
+		
+		/*
+				Children follow a predictable pattern to make accesses simple.
+				Here, - means less than 'origin' in that dimension, + means greater than.
+				child:	0 1 2 3 4 5 6 7
+				x:      - - - - + + + +
+				y:      - - + + - - + +
+				z:      - + - + - + - +
+		 */
+
+		public:
+		OctreeBox(Boxes& boxes) : _data(boxes) {
+			std::cout << "Construct Octree: MaxElements = " << MaxElements << std::endl;
+			auto start = std::chrono::steady_clock::now();
+
+			this->num_of_boxes = boxes.size();
+			root = new OctreeBoxNode_t(boxes);
+			
+			auto end = std::chrono::steady_clock::now();
+			build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+			std::cout << "Build Time: " << get_build_time() << " [ms]" << std::endl;
+			std::cout << "Index Size: " << index_size() << " Bytes" << std::endl;
+		}
+		
+		~OctreeBox() {
+			delete root;
+		}
+
+		Boxes range_query(const Box& box) {
+			auto start = std::chrono::steady_clock::now();
+			
+			Boxes results;
+			if (root != NULL) {
+				std::vector<BoxID_t> ids = root->range_query(_data, box);
+				results.reserve(ids.size());
+				for (auto id : ids)
+					results.emplace_back(_data[id]);
+			}
+			
+			auto end = std::chrono::steady_clock::now();
+			range_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+			range_count ++;
+			
+			return results;
+		}
+		
+		inline size_t count() {
+			return this->num_of_boxes;
+		}
+
+		inline size_t index_size() {
+			size_t ret = sizeof(size_t) + sizeof(OctreeBoxNode_t*);
+			if (root != NULL)
+				ret += root->index_size();
+			return ret;
+		}
+	};
 
 }
 }
