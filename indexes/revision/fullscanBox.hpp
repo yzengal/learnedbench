@@ -4,7 +4,7 @@
 #include <chrono>
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
-#include "../base_index.hpp"
+#include "base_index.hpp"
 
 namespace bench { namespace index {
 
@@ -23,6 +23,10 @@ struct FullScanBox : public BaseIndex {
 
     inline size_t count() {
         return _data.size();
+    }
+	
+	inline size_t index_size() {
+        return 0;
     }
 
     // linear scan O(N)

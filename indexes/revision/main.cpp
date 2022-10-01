@@ -1,10 +1,10 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "uniform_gridBox.hpp"
+#include "equal_depth_gridBox.hpp"
 #include "fullscanBox.hpp"
-#include "type.hpp"
-#include "common.hpp"
+#include "../../utils/type.hpp"
+#include "../../utils/common.hpp"
 
 const int MAXL = 128;
 const int DIM = 2;
@@ -97,7 +97,7 @@ vector<int> testMyIndex() {
 	auto start = std::chrono::steady_clock::now();
 	vector<int> ret;
 	
-	bench::index::UG<DIM,10> myIndex(inputs);
+	bench::index::EDG<DIM,10> myIndex(inputs);
 	for (int j=0; j<m; ++j) {
 		auto results = myIndex.range_query(boxes[j]);
 		cout << results.size() << " ";

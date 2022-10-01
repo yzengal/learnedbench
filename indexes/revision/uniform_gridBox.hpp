@@ -2,7 +2,7 @@
 
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
-#include "../base_index.hpp"
+#include "base_index.hpp"
 
 #include <algorithm>
 #include <array>
@@ -27,17 +27,16 @@ namespace bench { namespace index {
 // uniform K by K ... grid 
 template<size_t dim, size_t K>
 class UG : public BaseIndex {
-
 using Point = point_t<dim>;
 using Box = box_t<dim>;
 using BoxID_t = int;
 using Boxes = std::vector<Box>;
 using Range = std::pair<size_t, size_t>;
 
-Boxes& _data;
-
 public:
-    UG(Boxes& boxes):_data(boxes) {
+	Boxes& _data;
+
+    UG(Boxes& boxes) : _data(boxes) {
         std::cout << "Construct Uniform Grid K=" << K << std::endl;
         auto start = std::chrono::steady_clock::now();
 
@@ -53,7 +52,7 @@ public:
         std::fill(maxs.begin(), maxs.end(), std::numeric_limits<double>::min());
 
 		for (auto& box : boxes) {
-			Box p = box.min_corner(), q = box.max_corner();
+			Point p = box.min_corner(), q = box.max_corner();
 			for (size_t i=0; i<dim; ++i) {
 				mins[i] = std::min(std::min(p[i], q[i]), mins[i]);
 				maxs[i] = std::max(std::max(p[i], q[i]), maxs[i]);
@@ -65,11 +64,11 @@ public:
             widths[i] = (maxs[i] - mins[i]) / K;
         }
         
-        // insert points to buckets
+        // insert boxes to buckets
         for (BoxID_t idx=boxes.size()-1; idx>=0; --idx) {
 			auto gids = compute_ids(boxes[idx]);
 			for (auto gid : gids)
-				buckets[gid].emplace_back(ix);
+				buckets[gid].emplace_back(idx);
         }
 
         auto end = std::chrono::steady_clock::now();
@@ -79,12 +78,11 @@ public:
     }
 
 
-    Boxes range_query(Box& box) {
+    Boxes range_query(const Box& box) {
         auto start = std::chrono::steady_clock::now();
 
         // bucket ranges that intersect the query box
         std::vector<Range> ranges;
-		unordered_set<BoxID_t> visit;
 		
         // search range on the 1-st dimension
         ranges.emplace_back(std::make_pair(get_dim_idx(box.min_corner(), 0), get_dim_idx(box.max_corner(), 0)));
@@ -105,10 +103,11 @@ public:
             ranges = temp_ranges;
         }
 
-        // Points candidates;
+        // Boxes candidates;
+		unordered_set<BoxID_t> visit;
         Boxes results;
 
-        // find candidate points
+        // find candidate boxes
         for (auto range : ranges) {
             auto start_idx = range.first;
             auto end_idx = range.second;
@@ -117,9 +116,9 @@ public:
                 for (BoxID_t candBoxID : this->buckets[idx]) {
 					Box& candBox = _data[candBoxID];
                     if (bench::common::is_intersect_box(candBox, box)) {
-						if (visit.count(candBoxID) == 0) 
+						if (visit.count(candBoxID) == 0) {
 							visit.insert(candBoxID);
-							result.emplace_back(candBox);
+							results.emplace_back(candBox);
 						}
                     }
                 }
