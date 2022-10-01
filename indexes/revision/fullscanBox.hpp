@@ -32,16 +32,19 @@ struct FullScanBox : public BaseIndex {
     // linear scan O(N)
     Boxes range_query(const Box& box) {
         auto start = std::chrono::steady_clock::now();
-        Boxes results;
+        
+		Boxes results;
         for (auto b : _data) {
             if (bench::common::is_intersect_box(b, box)) {
                 results.emplace_back(b);
             }
         }
-        auto end = std::chrono::steady_clock::now();
+        
+		auto end = std::chrono::steady_clock::now();
         range_count ++;
         range_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-        return results;
+        
+		return results;
     }
 }; 
 
