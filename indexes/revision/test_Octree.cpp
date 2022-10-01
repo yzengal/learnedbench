@@ -8,8 +8,8 @@ using namespace std;
 
 const int MAXL = 128;
 const int DIM = 3;
-const int n = 10000;
-const int m = 200;
+const int n = 150;
+const int m = 10;
 const int K = 10;
 std::vector<point_t<DIM> > points;
 std::vector<box_t<DIM> > boxes;
@@ -167,13 +167,15 @@ vector<double> testOctreeKNN() {
 void testUpdate() {
 	auto start = std::chrono::steady_clock::now();
 	const int PREN = 100;
-	const int UPDATEN = 30;
+	const int UPDATEN = 100;
+	bool correct = true;
 	
 	vector<point_t<DIM> > P;
 	for (int i=0; i<PREN; ++i)
 		P.emplace_back(points[i]);
 	
-	bench::index::Octree<DIM,1> octree(P);
+	vector<point_t<DIM> > data = P;
+	bench::index::Octree<DIM,1> octree(data);
 	for (int j=0; j<m; ++j) {
 		bool flag = true;
 		
@@ -183,6 +185,12 @@ void testUpdate() {
 			if (rand()%2 == 1) {// insert
 				P.emplace_back(q);
 				octree.insert(q);
+				
+				// for (const auto p : P) {
+					// bench::common::print_point(p, false);
+					// cout << " ";
+				// }
+				// cout << endl;
 				
 			} else {// delete
 				bool _erased = false;
@@ -197,11 +205,13 @@ void testUpdate() {
 				}
 				
 				bool erased = octree.erase(q);
-				// cout << _erased << " " << erased << " ";
+				cout << "\t\t" << ((_erased==erased) ? "True" : "False") << endl;
 				if (_erased != erased) {
 					flag = false;
 				}
 			}
+			
+			// cout << "\t\t" << data.size() << " " << P.size() << endl;
 		}
 		
 		
@@ -209,13 +219,16 @@ void testUpdate() {
 		auto results = fs.range_query(boxes[j]);
 		auto _results = octree.range_query(boxes[j]);
 		
-		cout << (flag ? "True" : "False") << " " << results.size() << " " << _results.size() << endl;
+		correct = correct && flag;
+		cout << "\t" << (flag ? "True" : "False") << " " << results.size() << " " << _results.size() << endl;
 	}
 	cout << endl;
 
 	auto end = std::chrono::steady_clock::now();
 	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	cout << "[testOctree] " << T << "ms" << endl;
+	
+	cout << endl << endl << (correct ? "True" : "False") << endl;
 }
 
 

@@ -112,7 +112,7 @@ namespace bench { namespace index {
 		inline size_t index_size() {
 			size_t ret = sizeof(OctreeBoxNode*)*CHILD_SIZE + sizeof(double)*dim*2;
 			
-			ret += sizeof(int*) + sizeof(int) + sizeof(int)*ids.size();
+			ret += sizeof(int*) + sizeof(int) + sizeof(int)*cnts.size();
 			ret += sizeof(BoxID_t*) + sizeof(int) + sizeof(BoxID_t)*ids.size();
 			for(int i=0; i<CHILD_SIZE; ++i) {
 				if (children[i] != NULL)
@@ -169,7 +169,7 @@ namespace bench { namespace index {
 			return oct;
 		}
 		
-		void insert(const Boxes& boxes, int pid, int num=1, int dep=0) {
+		void insert(const Boxes& boxes, const int pid, int num=1, int dep=0) {
 			const Box& box = boxes[pid];
 			
 			#ifdef LOCAL_DEBUG

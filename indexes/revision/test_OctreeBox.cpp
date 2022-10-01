@@ -65,7 +65,7 @@ static vector<box_t<DIM>> sample_boxes(const int n, const int MAXL) {
 }
 
 void init() {
-	inputs = sample_boxes<DIM>(n, 16);
+	inputs = sample_boxes<DIM>(n, 1024);
 	for (int i=0; i<m; ++i) {
 		box_t<DIM> box = sample_range<DIM>(1024);
 		boxes.emplace_back(box);
@@ -92,14 +92,14 @@ vector<int> testNaive() {
 	return ret;
 }
 
-// Query using Octree
-vector<int> testOctree() {
+// Query using index
+vector<int> testMyIndex() {
 	auto start = std::chrono::steady_clock::now();
 	vector<int> ret;
 	
-	bench::index::OctreeBox<DIM,1> octree(inputs);
+	bench::index::OctreeBox<DIM,10> myIndex(inputs);
 	for (int j=0; j<m; ++j) {
-		auto results = octree.range_query(boxes[j]);
+		auto results = myIndex.range_query(boxes[j]);
 		cout << results.size() << " ";
 		ret.push_back((int) results.size());
 	}
@@ -107,7 +107,7 @@ vector<int> testOctree() {
 
 	auto end = std::chrono::steady_clock::now();
 	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-	cout << "[testOctree] " << T << "ms" << endl;
+	cout << "[testMyIndex] " << T << "ms" << endl;
 	
 	return ret;
 }
@@ -117,7 +117,7 @@ vector<int> testOctree() {
 int main(int argc, char **argv) {
 	init();
 	auto va = testNaive();
-	auto vb = testOctree();
+	auto vb = testMyIndex();
 
 	bool flag = true;
 	for (int i=0; i<m; ++i) {
