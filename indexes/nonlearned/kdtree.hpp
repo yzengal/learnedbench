@@ -13,6 +13,8 @@
 #include <gperftools/heap-profiler.h>
 #endif
 
+// #define LOCAL_DEBUG
+
 namespace bench { namespace index {
 
 // kdtree adapter using nanoflann
@@ -100,18 +102,43 @@ struct KDTreeVectorOfVectorsAdaptor
 	
 	inline void rangeQuery(
         const num_t* query_point, const num_t radius,
-        vector<IndexType>& out_indices, vector<num_t>& out_distances_sq) const
+        std::vector<IndexType>& out_indices, std::vector<num_t>& out_distances_sq) const
     {
-		vector<pair<IndexType,num_t> > IndicesDists;
-        nanoflann::RadiusResultSet<num_t, IndexType> resultSet(radius, IndicesDists);
-		index->radiusSearchCustomCallback(query_point, resultSet, anoflann::SearchParams());
+		// vector<pair<IndexType,num_t> > IndicesDists;
+        // nanoflann::RadiusResultSet<num_t, IndexType> resultSet(radius, IndicesDists);
+		// const size_t nFound = index->radiusSearchCustomCallback(query_point, resultSet, nanoflann::SearchParams());
         
+		// std::cout << "rangeQuery: radius = " << radius << " nFound = " << nFound << endl;
+		
+		// out_indices.clear();
+		// out_distances_sq.clear();
+		// for (int i=0; i<IndicesDists.size(); ++i) {
+			// out_indices.push_back(IndicesDists[i].first);
+			// out_distances_sq.push_back(IndicesDists[i].second);
+		// }
+		
+		std::vector<std::pair<IndexType, num_t> > ret_matches;
+        nanoflann::SearchParams params;
+        params.sorted = false;
+
+        const size_t nFound = index->radiusSearch(
+            &query_point[0], radius, ret_matches, params);
+		
 		out_indices.clear();
 		out_distances_sq.clear();
-		for (int i=0; i<IndicesDists.size(); ++i) {
-			out_indices.push_back(IndicesDists[i].first);
-			out_distances_sq.push_back(IndicesDists[i].second);
+		for (int i=0; i<nFound; ++i) {
+			out_indices.push_back(ret_matches[i].first);
+			out_distances_sq.push_back(ret_matches[i].second);
 		}
+		
+		#ifdef LOCAL_DEBUG
+        std::cout << "radiusSearch(): radius=" << radius << " -> " << nFound
+             << " matches\n";
+        for (size_t i = 0; i < nFound; i++)
+            std::cout << "idx[" << i << "]=" << ret_matches[i].first << " dist[" << i
+                 << "]=" << ret_matches[i].second << endl;
+        std::cout << "\n";
+		#endif
     }
 
     /** @name Interface expected by KDTreeSingleIndexAdaptor
@@ -202,22 +229,29 @@ Points range_query(Box& box) {
 	const double EPS = 1e-5;
 	
 	auto start = std::chrono::steady_clock::now();
-	Point q;
+	Point q, mnp = box.min_corner(), mxp = box.max_corner();
 	double radius;
 	
-	for (size_t d=0; d<dim; ++d) {
-		q[d] = (box.min_corner()[d]+box.max_corner()[d]) * 0.5;
+	for (size_t d=0; d<Dim; ++d) {
+		q[d] = (mnp[d]+mxp[d]) * 0.5;
 	}
-	radius = EPS + max(bench::common::eu_dist(box.min_corner(), q), 
-					bench::common::eu_dist(box.max_corner(), q));
+	radius = EPS + max(bench::common::eu_dist_square(box.min_corner(), q), 
+					bench::common::eu_dist_square(box.max_corner(), q));
     
+	#ifdef LOCAL_DEBUG
+	cout << "[RangeQuery]: ";
+	bench::common::print_point<Dim>(q, false);
+	cout << " ";
+	bench::common::print_box<Dim>(box);
+	#endif
+	
     kdtree->rangeQuery(&q[0], radius, ret_indexes, out_dist_sqr);
 	
-	Points result;
-    result.reserve(num_of_results);
+	Points results;
+    results.reserve(ret_indexes.size());
     for (auto idx : ret_indexes) {
 		 if (bench::common::is_in_box(kdtree->m_data[idx], box)) {
-			result.emplace_back(kdtree->m_data[idx]);
+			results.emplace_back(kdtree->m_data[idx]);
 		}
     }
     
@@ -225,7 +259,7 @@ Points range_query(Box& box) {
     range_count++;
     range_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
-    return result;
+    return results;
 }
 
 

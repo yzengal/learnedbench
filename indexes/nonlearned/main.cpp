@@ -7,7 +7,7 @@ using namespace std;
 #include "../../utils/common.hpp"
 
 const int MAXL = 128;
-const int DIM = 3;
+const int DIM = 2;
 const int n = 150;
 const int m = 10;
 const int K = 10;
@@ -109,6 +109,49 @@ vector<int> testOctree() {
 	return ret;
 }
 
+// Query using KDtree
+vector<int> testKDtree() {
+	auto start = std::chrono::steady_clock::now();
+	vector<int> ret;
+	
+	bench::index::KDTree<DIM> kdtree(points);
+	for (int j=0; j<m; ++j) {
+		
+		auto results = kdtree.range_query(boxes[j]);
+		cout << results.size() << " ";
+		ret.push_back((int) results.size());
+		
+		// {//compute radius;
+			// box_t<DIM> box = boxes[j];
+			// point_t<DIM> q, mnp = box.min_corner(), mxp = box.max_corner();
+			// double radius;
+			
+			// for (size_t d=0; d<DIM; ++d) {
+				// q[d] = (mnp[d]+mxp[d]) * 0.5;
+			// }
+			// radius = 1e-5 + max(bench::common::eu_dist(box.min_corner(), q), 
+							// bench::common::eu_dist(box.max_corner(), q));
+							
+			// size_t nFound = 0;
+			// for (auto point : points) {
+				// if (bench::common::eu_dist(q, point) <= radius) {
+					// ++nFound;
+				// }
+			// }
+			
+			// cout << "radiusSearch(): radius=" << radius << " -> " << nFound
+				 // << " matches\n";
+		// }
+	}
+	cout << endl;
+
+	auto end = std::chrono::steady_clock::now();
+	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+	cout << "[testKDtree] " << T << "ms" << endl;
+	
+	return ret;
+}
+
 // Query using brute-force
 vector<double> testNaiveKNN() {
 	auto start = std::chrono::steady_clock::now();
@@ -168,7 +211,7 @@ vector<double> testOctreeKNN() {
 int main(int argc, char **argv) {
 	init();
 	auto va = testNaive();
-	auto vb = testOctree();
+	auto vb = testKDtree();
 
 	bool flag = true;
 	for (int i=0; i<m; ++i) {
