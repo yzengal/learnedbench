@@ -75,6 +75,15 @@ inline size_t index_size() {
     return bench::common::get_boost_rtree_statistics(*rtree);
 }
 
+void insert(const Point& point) {
+	rtree->insert(point);
+}
+
+bool erase(const Point& point) {
+	rtree->remove(point);
+	return true;
+}
+
 private:
 rtree_t* rtree;
 };
@@ -139,6 +148,14 @@ inline size_t index_size() {
     return bench::common::get_boost_rtree_statistics(*rtree);
 }
 
+void insert(const Point& point) {
+	rtree->insert(point);
+}
+
+bool erase(const Point& point) {
+	rtree->remove(point);
+	return true;
+}
 
 private:
 rtree_t* rtree;

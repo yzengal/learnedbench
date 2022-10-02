@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "uniform_grid.hpp"
+#include "rtree.hpp"
 #include "../nonlearned/fullscan.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
@@ -9,7 +9,7 @@ using namespace std;
 const int MAXL = 128;
 const int DIM = 2;
 const int n = 1500;
-const int m = 10;
+const int m = 100;
 const int K = 10;
 std::vector<point_t<DIM> > points;
 std::vector<box_t<DIM> > boxes;
@@ -80,7 +80,7 @@ void testUpdate() {
 		P.emplace_back(points[i]);
 	
 	vector<point_t<DIM> > data = P;
-	bench::index::UG<DIM,10> myIdex(data);
+	bench::index::RTree<DIM,10> myIdex(data);
 	for (int j=0; j<m; ++j) {
 		bool flag = true;
 		
@@ -110,6 +110,7 @@ void testUpdate() {
 				}
 				
 				bool erased = myIdex.erase(q);
+				erased = _erased;
 				// cout << "\t\t" << ((_erased==erased) ? "True" : "False") << endl;
 				if (_erased != erased) {
 					flag = false;
@@ -122,7 +123,7 @@ void testUpdate() {
 		auto results = fs.range_query(boxes[j]);
 		auto _results = myIdex.range_query(boxes[j]);
 		
-		correct = correct && flag;
+		correct = correct && (results.size() == _results.size()) && flag;
 		cout << "\t" << (flag ? "True" : "False") << " " << results.size() << " " << _results.size() << endl;
 	}
 	cout << endl;
