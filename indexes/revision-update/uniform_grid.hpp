@@ -129,6 +129,25 @@ public:
     inline size_t index_size() {
         return dim * (3 * sizeof(double) + sizeof(size_t)) + this->buckets.size() * sizeof(Points);
     }
+	
+	void insert(const Point& point) {
+		buckets[compute_id(point)].emplace_back(point);
+	}
+
+			
+	bool erase(const Point& point) {
+		size_t bucketID = compute_id(point);
+		
+		for (size_t i=0; i<buckets[bucketID].size(); ++i) {
+			if (bench::common::is_equal_point<dim>(buckets[bucketID][i], point)) {
+				buckets[bucketID][i] = *buckets[bucketID].rbegin();
+				buckets[bucketID].pop_back();
+				return true;
+			}
+		}
+		
+		return false;
+	}
 
 
 private:
@@ -140,7 +159,7 @@ private:
     std::array<size_t, dim> dim_offset;
 
     // compute the index on d-th dimension of a given point
-    inline size_t get_dim_idx(Point& p, const size_t& d) {
+    inline size_t get_dim_idx(const Point& p, const size_t& d) {
         if (p[d] <= mins[d]) {
             return 0;
         } else if (p[d] >= maxs[d]) {
@@ -151,7 +170,7 @@ private:
     }
 
     // compute the bucket ID of a given point
-    inline size_t compute_id(Point& p) {
+    inline size_t compute_id(const Point& p) {
         size_t id = 0;
 
         for (size_t i=0; i<dim; ++i) {

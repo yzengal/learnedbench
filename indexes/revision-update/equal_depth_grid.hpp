@@ -130,6 +130,25 @@ void print_partitions() {
         std::cout << std::endl;
     }
 }
+
+void insert(const Point& point) {
+	buckets[compute_id(point)].emplace_back(point);
+}
+
+		
+bool erase(const Point& point) {
+	size_t bucketID = compute_id(point);
+	
+	for (size_t i=0; i<buckets[bucketID].size(); ++i) {
+		if (bench::common::is_equal_point<Dim>(buckets[bucketID][i], point)) {
+			buckets[bucketID][i] = *buckets[bucketID].rbegin();
+			buckets[bucketID].pop_back();
+			return true;
+		}
+	}
+	
+	return false;
+}
     
 private:
 size_t N;
@@ -138,7 +157,7 @@ std::array<size_t, Dim> dim_offset;
 Partitions partitions; // bucket boundaries on each dimension
 
 // locate the bucket on d-th dimension using binary search
-inline size_t get_dim_idx(Point& p, size_t d) {
+inline size_t get_dim_idx(const Point& p, size_t d) {
     if (p[d] <= partitions[d][0]) {
         return 0;
     } else {
@@ -147,7 +166,7 @@ inline size_t get_dim_idx(Point& p, size_t d) {
     }
 }
 
-inline size_t compute_id(Point& p) {
+inline size_t compute_id(const Point& p) {
     size_t id = 0;
 
     for (size_t i=0; i<Dim; ++i) {
