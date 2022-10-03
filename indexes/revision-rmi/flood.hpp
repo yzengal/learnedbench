@@ -10,34 +10,36 @@
 #include <vector>
 #include <chrono>
 #include <random>
+#include <unordered_set>
 
 #include "../base_index.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
-#include "../pgm/pgm_index.hpp"
-#include "../pgm/pgm_index_variants.hpp"
+#include "../rmi/models.hpp"
+#include "../rmi/rmi.hpp"
 
 
 namespace bench { namespace index {
 
 // the sort dimension is always the last dimension
-template<size_t Dim, size_t K, size_t Eps=64, size_t SortDim=Dim-1>
+template<size_t Dim, size_t K=10, size_t Eps=64, size_t SortDim=Dim-1>
 class Flood : public BaseIndex {
 
 using Point = point_t<Dim>;
 using Points = std::vector<Point>;
 using Range = std::pair<size_t, size_t>;
 using Box = box_t<Dim>;
-
-using Index = pgm::PGMIndex<double, Eps>;
-
+using layer1_type = rmi::LinearSpline;
+using layer2_type = rmi::LinearRegression;
+using Index = rmi::RmiLAbs<double, layer1_type, layer2_type>;
+	
 public:
 
 class Bucket {
     public:
     Points _local_points;
     // eps for each bucket is fixed to 16 based on a micro benchmark
-    pgm::PGMIndex<double, 16>* _local_pgm;
+    Index* _local_pgm;
 
     Bucket() : _local_pgm(nullptr) {} ;
 
@@ -60,10 +62,15 @@ class Bucket {
             idx_data.emplace_back(std::get<SortDim>(p));
         }
 
-        _local_pgm = new pgm::PGMIndex<double, 16>(idx_data);
+        // _local_pgm = new pgm::PGMIndex<double, 16>(idx_data);
+		// train 1-D learned index on projections
+		std::size_t index_budget = idx_data.size() * sizeof(double);
+		std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
+		if (layer2_size < 8) layer2_size = 8;
+		this->_local_pgm = new Index(idx_data, layer2_size);
     }
 
-    inline void search(Points& result, Box& box) {
+    inline void search(Points& result, Box& box, size_t bucketID, std::unordered_set<double>& visit) {
         if (_local_pgm == nullptr) {
             return;
         }
@@ -73,9 +80,13 @@ class Bucket {
         auto range_lo = this->_local_pgm->search(min_key);
         auto range_hi = this->_local_pgm->search(max_key);
 
-        for (size_t i=range_lo.lo; i<range_hi.hi; ++i) {
+        for (size_t i=range_lo.lo; i<=range_hi.hi&&i<this->_local_points.size(); ++i) {
             if (bench::common::is_in_box(this->_local_points[i], box)) {
-                result.emplace_back(this->_local_points[i]);
+				// double keyID = i*1.0*bench::common::ipow(K, Dim-1) + bucketID;
+				// if (visit.count(keyID) == 0) {
+					// visit.insert(keyID);
+					result.emplace_back(this->_local_points[i]);
+				// }
             }
         }
     }
@@ -112,7 +123,10 @@ Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
         }
 
         std::sort(idx_data.begin(), idx_data.end());
-        this->indexes[i] = new Index(idx_data);
+		std::size_t index_budget = idx_data.size() * sizeof(double);
+		std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
+		if (layer2_size < 8) layer2_size = 8;
+        this->indexes[i] = new Index(idx_data, layer2_size);
 
         idx_data.clear();
     }
@@ -142,9 +156,10 @@ Points range_query(Box& box) {
     
     // search each cell using local models
     Points result;
+	std::unordered_set<double> visit;
     for (auto& range : ranges) {
         for (auto idx=range.first; idx<=range.second; ++idx) {
-            this->buckets[idx].search(result, box);
+            this->buckets[idx].search(result, box, idx, visit);
         }
     }
 

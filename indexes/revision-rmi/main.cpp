@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "mlindex.hpp"
+#include "flood.hpp"
 #include "../nonlearned/fullscan.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
@@ -94,7 +94,7 @@ vector<int> testKDtree() {
 	auto start = std::chrono::steady_clock::now();
 	vector<int> ret;
 	
-	bench::index::MLIndex<DIM> kdtree(points);
+	bench::index::Flood<DIM> kdtree(points);
 	for (int j=0; j<m; ++j) {
 		
 		auto results = kdtree.range_query(boxes[j]);
@@ -138,31 +138,31 @@ vector<double> testNaiveKNN() {
 }
 
 // Query using Octree
-vector<double> testOctreeKNN() {
-	auto start = std::chrono::steady_clock::now();
-	vector<double> ret;
+// vector<double> testOctreeKNN() {
+	// auto start = std::chrono::steady_clock::now();
+	// vector<double> ret;
 	
-	bench::index::MLIndex<DIM> octree(points);
-	for (int j=0; j<m; ++j) {
-		auto q = boxes[j].min_corner();
-		auto results = octree.knn_query(q, K);
-		double knnd = 0.0;
-		for (auto point : results) {
-			double tmp = bench::common::eu_dist(point, q);
-			if (tmp > knnd)
-				knnd = tmp;
-		}
-		cout << knnd << " ";
-		ret.push_back(knnd);
-	}
-	cout << endl;
+	// bench::index::Flood<DIM> octree(points);
+	// for (int j=0; j<m; ++j) {
+		// auto q = boxes[j].min_corner();
+		// auto results = octree.knn_query(q, K);
+		// double knnd = 0.0;
+		// for (auto point : results) {
+			// double tmp = bench::common::eu_dist(point, q);
+			// if (tmp > knnd)
+				// knnd = tmp;
+		// }
+		// cout << knnd << " ";
+		// ret.push_back(knnd);
+	// }
+	// cout << endl;
 
-	auto end = std::chrono::steady_clock::now();
-	auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-	cout << "[testOctree] " << T << "ms" << endl;
+	// auto end = std::chrono::steady_clock::now();
+	// auto T = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+	// cout << "[testOctree] " << T << "ms" << endl;
 	
-	return ret;
-}
+	// return ret;
+// }
 
 
 
@@ -170,6 +170,9 @@ int main(int argc, char **argv) {
 	init();
 	auto va = testNaive();
 	auto vb = testKDtree();
+	
+	// auto va = testNaiveKNN();
+	// auto vb = testOctreeKNN();
 
 	bool flag = true;
 	for (int i=0; i<m; ++i) {

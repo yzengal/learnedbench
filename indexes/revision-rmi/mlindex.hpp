@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dkm.hpp"
+#include "../learned/dkm.hpp"
 #include "../../utils/common.hpp"
 #include "../../utils/type.hpp"
 #include "../base_index.hpp"
@@ -15,6 +15,7 @@
 #include <chrono>
 #include <queue>
 #include <cmath>
+#include <unordered_set>
 
 namespace bench { namespace index {
 
@@ -91,8 +92,27 @@ MLIndex(Points& points) {
         this->_data.emplace_back(std::get<0>(pp));
         projections.emplace_back(std::get<1>(pp));
     }
+	
+	// make sure there is no duplicate keys
+    for (size_t sz=projections.size()-1,i=0; i<sz; ) {
+		size_t j = i++;
+		while (i<sz && projections[i]==projections[j]) ++i;
+		if (i - j > 1) {
+			double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
+			delta /= (i - j);
+			for (size_t k=j; k<i; ++k) 
+				projections[k] += delta * (k-j);
+		}
+    }
+	// for (size_t sz=projections.size()-1,i=0; i<sz; ++i) {
+		// printf("%.6lf ", projections[i]);
+		// assert(i==0 || projections[i]>projections[i-1]);
+    // }
     
-    this->_rmi = new RMI_t(projections);
+	// train 1-D learned index on projections
+	std::size_t index_budget = points.size() * sizeof(double);
+	std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
+    this->_rmi = new RMI_t(projections, layer2_size);
 
     auto end = std::chrono::steady_clock::now();
     build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -151,6 +171,7 @@ Points knn_query(Point& point, size_t k) {
     // initial search distance
     size_t p_id = find_closest_center(point);
     double r = this->radii[p_id] * std::pow((p * k)/(count() * 1.0), 1.0/dim);
+	const double EPS = 1e-6;
 
     Points temp_result;
     while (1) {
@@ -162,6 +183,7 @@ Points knn_query(Point& point, size_t k) {
         }
 
         r *= 2;
+		if (r == 0) r = EPS;
         temp_result.clear();
     }
 
@@ -180,66 +202,88 @@ Points knn_query(Point& point, size_t k) {
 
 // search points in a circle cenerted at q_point with radius=dist
 inline void dist_search(Points& results, Point& q_point, double dist) {
-    assert(dist > 0);
+	// if (dist <= 0) cout << dist << endl;
+    assert(dist >= 0);
+	std::unordered_set<size_t> visit;
 
     // search each partition
     for (size_t i=0; i<p; ++i) {
-        partition_search(results, q_point, dist, i);
+        partition_search(results, q_point, dist, i, visit);
     }
 }
 
 // map a distance range query to 1-D intervals on each partition
-inline void partition_search(Points& results, Point& q_point, double radius, size_t partition_id) {
+inline void partition_search(Points& results, Point& q_point, double radius, size_t partition_id, std::unordered_set<size_t>& visit) {
     double partition_radius = this->radii[partition_id];
     double dist_to_center = bench::common::eu_dist(q_point, this->means[partition_id]);
-
+	const double EPS = 1;
+	
+    if (dist_to_center > (partition_radius + radius + EPS)) {
+        /* case 6: two circles are disjoint and nothing to do */
+        return;
+    }
+	
     double lo=0.0, hi=0.0;
+	lo = this->offsets[partition_id];
+	hi = this->offsets[partition_id] + this->radii[partition_id];
     
     if (dist_to_center < (radius + partition_radius) && dist_to_center > std::fabs(radius - partition_radius)) {
         if (dist_to_center < radius) {
             // case 1: two circle intersect and data center is in the search circle
             lo = this->offsets[partition_id];
             hi = this->offsets[partition_id] + this->radii[partition_id];
+			// cout << "case 1" << endl;
         } else if (dist_to_center < partition_radius) {
             // case 2: two circle intersect and search center is in the data partition
             lo = this->offsets[partition_id] + (dist_to_center - radius);
             hi = this->offsets[partition_id] + this->radii[partition_id];
+			// lo = this->offsets[partition_id];
+			// hi = this->offsets[partition_id] + this->radii[partition_id];
+			// cout << "case 2" << endl;
         } else {
             // case 3: two circle intersect and no center is in another partition
-            lo = this->offsets[partition_id] + (dist_to_center - radius);
+            lo = this->offsets[partition_id] + (radius + partition_radius - dist_to_center);
             hi = this->offsets[partition_id] + this->radii[partition_id];
+			// lo = this->offsets[partition_id];
+			// hi = this->offsets[partition_id] + this->radii[partition_id];
+			// cout << "case 3" << endl;
         }
     }
 
-    if (dist_to_center < (partition_radius - radius)) {
+    // if (dist_to_center < (partition_radius - radius)) {
         // case 4: data partition covers the search circle
-        lo = this->offsets[partition_id] + (dist_to_center - radius);
-        hi = this->offsets[partition_id] + (dist_to_center + radius);
-    }
+        // lo = this->offsets[partition_id] + (dist_to_center - radius);
+        // hi = this->offsets[partition_id] + (dist_to_center + radius);
+		// cout << "case 4" << endl;
+    // }
 
-    if (dist_to_center < (radius - partition_radius)) {
+    // if (dist_to_center < (radius - partition_radius)) {
         // case 5: search circle covers the data partition
-        lo = this->offsets[partition_id];
-        hi = this->offsets[partition_id] + this->radii[partition_id];
-    }
-
-    if (dist_to_center > (partition_radius + radius)) {
-        // case 6: two circles are disjoint and nothing to do
-        return;
-    }
+        // lo = this->offsets[partition_id];
+        // hi = this->offsets[partition_id] + this->radii[partition_id];
+		// cout << "case 5" << endl;
+    // }
+	
+	// lo = this->offsets[partition_id];
+    // hi = this->offsets[partition_id] + this->radii[partition_id];
     
     // query the index
-    assert(hi > lo);
+    assert(hi >= lo);
     double radius_square = radius * radius;
     auto range_lo = this->_rmi->search(lo);
     auto range_hi = this->_rmi->search(hi);
     auto it_lo = _data.begin() + range_lo.lo;
     auto it_hi = _data.begin() + range_hi.hi;
+	auto it_end = it_hi + 1;
 
-    for (auto it=it_lo; it!=it_hi; ++it) {
+    for (auto it=it_lo; it!=_data.end()&&it!=it_end; ++it) {
         // validate whether the result is within the given distance threshold radius
-        if (bench::common::eu_dist_square(*it, q_point) < radius_square) {
-            results.emplace_back(*it);
+        if (bench::common::eu_dist_square(*it, q_point) <= radius_square) {
+			size_t pid = distance(it, _data.begin());
+			if (visit.count(pid) == 0) {
+				results.emplace_back(*it);
+				visit.insert(pid);
+			}            
         }
     }
 }
@@ -258,7 +302,7 @@ std::array<double, p> radii;
 std::array<double, p> offsets;
 
 // underlying pgm learned index
-pgm::PGMIndex<double, eps>* _rmi; 
+RMI_t* _rmi; 
 
 // find the closest partition center to a query point
 inline size_t find_closest_center(Point& point) {
