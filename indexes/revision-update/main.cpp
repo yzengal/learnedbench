@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "rtree.hpp"
+#include "lisa2.hpp"
 #include "../nonlearned/fullscan.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
@@ -80,7 +80,7 @@ void testUpdate() {
 		P.emplace_back(points[i]);
 	
 	vector<point_t<DIM> > data = P;
-	bench::index::RTree<DIM,10> myIdex(data);
+	bench::index::LISA2<DIM> myIdex(data);
 	for (int j=0; j<m; ++j) {
 		bool flag = true;
 		
