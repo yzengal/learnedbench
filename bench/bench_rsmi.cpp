@@ -70,6 +70,12 @@ int main(int argc, char **argv) {
         bench::query::batch_knn_queries(rsmi, knn_queries);
         return 0;
     }
+	
+    if (mode.compare("join") == 0) {
+        auto join_queries = bench::query::sample_join_queries(points);
+        bench::query::batch_join_queries(rsmi, join_queries);
+        return 0;
+    }
 
     if (mode.compare("all") == 0) {
         auto range_queries = bench::query::sample_range_queries(points);

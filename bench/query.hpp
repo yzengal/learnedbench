@@ -176,6 +176,51 @@ static void batch_range_queries(Index& index, std::vector<std::pair<box_t<Dim>, 
     std::cout << "Sel=[" << sel_lo << ", " << sel_hi << "]" << " Avg. Time: " << avg/bucket_size << " [us]" << std::endl;
 }
 
+
+
+// sample knn join
+// k is in range {1, 10, 100, 500, 1000, 10000}
+// each k has s=100 samples
+template<size_t dim>
+static std::map<size_t, std::vector<vec_of_point_t<dim> > > sample_join_queries(vec_of_point_t<dim>& points, size_t rs=100, size_t s=10) {
+    int ks[6] = {1, 10, 100, 500, 1000, 10000};
+	std::vector<vec_of_point_t<dim> > pointsVec;
+	
+	for (size_t i=0; i<s; ++i) {
+		auto query_points = sample_point_queries(points, rs);
+		pointsVec.emplace_back(query_points);
+	}
+    
+
+    std::map<size_t, vector<vec_of_point_t<dim> > > join_queries;
+
+    for (auto k : ks) {
+		join_queries[k] = pointsVec;
+    }
+
+    return join_queries;
+}
+
+template<class Index, size_t Dim>
+static void batch_join_queries(Index& index, std::map<size_t, std::vector<vec_of_point_t<dim> > >& join_queries) {
+    int ks[6] = {1, 10, 100, 500, 1000, 10000};
+
+    for (auto k : ks) {
+		std::vector<vec_of_point_t<dim> > pointsVec = join_queries[k];
+		double avg_knn_time = 0.0;
+		for (size_t i=0; i<pointsVec.size(); ++i) {			
+			for (auto& q_point : pointsVec[i]) {
+				index.knn_query(q_point, k);
+			}
+			avg_knn_time += index.get_knn_time();
+			index.reset_timer();
+		}
+		if (pointsVec.size() > 0) avg_knn_time /= pointsVec.size();
+        std::cout << "k=" << k << " Avg. Time: " << avg_knn_time << " [us]" << std::endl;
+    }
+
+}
+
 }
 }
 
