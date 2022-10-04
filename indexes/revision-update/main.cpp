@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "lisa2.hpp"
+#include "ifindex.hpp"
 #include "../nonlearned/fullscan.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
@@ -80,7 +80,7 @@ void testUpdate() {
 		P.emplace_back(points[i]);
 	
 	vector<point_t<DIM> > data = P;
-	bench::index::LISA2<DIM> myIdex(data);
+	bench::index::IFIndex<DIM,10> myIdex(data);
 	for (int j=0; j<m; ++j) {
 		bool flag = true;
 		
@@ -88,6 +88,10 @@ void testUpdate() {
 			int id = rand() % PREN;
 			auto q = points[id];
 			if (rand()%2 == 0) {// insert
+			
+				cout << "[INSERT]: " << id << " ";
+				bench::common::print_point(q, true);
+				
 				P.emplace_back(q);
 				myIdex.insert(q);
 				
@@ -109,6 +113,10 @@ void testUpdate() {
 					}
 				}
 				
+				cout << "[DELETE]: " << id << " ";
+				bench::common::print_point(q, false);
+				cout << " " << ((_erased) ? "True" : "False") << endl;
+				
 				bool erased = myIdex.erase(q);
 				erased = _erased;
 				// cout << "\t\t" << ((_erased==erased) ? "True" : "False") << endl;
@@ -116,6 +124,8 @@ void testUpdate() {
 					flag = false;
 				}
 			}
+			
+			cout << data.size() << " " << P.size() << endl;
 		}
 		
 		

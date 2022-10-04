@@ -9,9 +9,11 @@
 
 #include <boost/geometry/index/rtree.hpp>
 #include <boost/math/statistics/linear_regression.hpp>
-
-#include "../base_index.hpp"
 #include "../../utils/type.hpp"
+#include "../../utils/common.hpp"
+#include "../base_index.hpp"
+
+// #define LOCAL_DEBUG
 
 namespace bgi = boost::geometry::index;
 using boost::math::statistics::simple_ordinary_least_squares;
@@ -40,6 +42,7 @@ class LeafNode {
     // predicted pos = slope * point[sort_dim] + intercept
     double slope;
     double intercept;
+	bool lr_error;
 
     LeafNode(std::vector<size_t> ids, Points& points) : _ids(ids), count(ids.size()) {
         std::vector<std::pair<size_t, double>> id_and_vals;
@@ -72,24 +75,41 @@ class LeafNode {
         }
         
         // train a linear regression model using ordinary least square
-        auto [a, b] = simple_ordinary_least_squares(vals, ys);
-        intercept = a;
-        slope = b;
+		lr_error = false;
+		try {
+			auto [a, b] = simple_ordinary_least_squares(vals, ys);
+			intercept = a;
+			slope = b;
 
-        // compute the max error
-        max_err = 0;
-        for (size_t i=0; i<count; ++i) {
-            auto pred = predict(vals[i]);
-            auto err = (pred >= i) ? (pred - i) : (i - pred);
-            max_err = (err > max_err) ? err : max_err;
-        }
+			// compute the max error
+			max_err = 0;
+			for (size_t i=0; i<count; ++i) {
+				auto pred = predict(vals[i]);
+				auto err = (pred >= i) ? (pred - i) : (i - pred);
+				max_err = (err > max_err) ? err : max_err;
+			}
+		} catch (...) {
+			lr_error = true;
+		}
     }
+	
+	bool operator==(const LeafNode& oth) const {
+		if (_ids.size() != oth._ids.size()) return false;
+		
+		for (int i=0; i<_ids.size(); ++i) {
+			if (_ids[i] != oth._ids[i])
+				return false;
+		}
+		
+		return true;
+ 	}
 
     void print_model() {
         std::cout << "f(x) = " << this->intercept << " + " << this->slope << " * x Max Error: " << this->max_err << std::endl;
     }
 
     inline size_t predict(double val) {
+		if (_ids.size() <= 1) return 0;
         double guess = slope * val + intercept;
         if (guess < 0) {
             return 0;
@@ -121,7 +141,11 @@ IFIndex(Points& points) : _points(points) {
 
     // run STR algorithm to bulk-load points
     pack_rtree_t temp_rt(point_with_id.begin(), point_with_id.end());
-
+	
+	#ifdef LOCAL_DEBUG
+	std::cout << "STR buck-load " << endl;
+	#endif
+	
     // group leaf nodes
     std::vector<std::pair<Box, LeafNode>> idx_data;
     idx_data.reserve((points.size() / LeafNodeCap) + 1);
@@ -140,9 +164,17 @@ IFIndex(Points& points) : _points(points) {
         idx_data.emplace_back(compute_mbr(temp_ids, points), LeafNode(temp_ids, points));
         temp_ids.clear();
     }
-
+	
+	#ifdef LOCAL_DEBUG
+	std::cout << "group leaf nodes" << endl;
+	#endif
+	
     // build index rtree
     _rt = new index_rtree_t(idx_data.begin(), idx_data.end());
+	
+	#ifdef LOCAL_DEBUG
+	std::cout << "build index rtree" << endl;
+	#endif
 
     auto end = std::chrono::steady_clock::now();
     build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -154,6 +186,86 @@ IFIndex(Points& points) : _points(points) {
     delete this->_rt;
 }
 
+void insert(Point& point) {
+	for (auto it=_rt->qbegin(bgi::contains(point)); it!=_rt->qend(); ++it) {
+		if (std::get<1>(*it)._ids.size() < LeafNodeCap) {
+			std::vector<size_t> temp_ids = std::get<1>(*it)._ids;
+			size_t pid;
+			if (!mem_manager.empty()) {
+				pid = *mem_manager.rbegin();
+				mem_manager.pop_back();
+			} else {
+				pid = this->_points.size();
+				this->_points.emplace_back(point);
+			}
+			temp_ids.emplace_back(pid);
+			_rt->remove(*it);
+			std::pair<Box, LeafNode> idx_data(compute_mbr(temp_ids, this->_points), LeafNode(temp_ids, this->_points));
+			_rt->insert(idx_data);
+			return ;
+		}
+    }
+	
+	for (auto it=_rt->qbegin(bgi::nearest(point, 1)); it!=_rt->qend(); ++it) {
+		if (std::get<1>(*it)._ids.size() < LeafNodeCap) {
+			std::vector<size_t> temp_ids = std::get<1>(*it)._ids;
+			size_t pid;
+			if (!mem_manager.empty()) {
+				pid = *mem_manager.rbegin();
+				mem_manager.pop_back();
+			} else {
+				pid = this->_points.size();
+				this->_points.emplace_back(point);
+			}
+			temp_ids.emplace_back(pid);
+			_rt->remove(*it);
+			std::pair<Box, LeafNode> idx_data(compute_mbr(temp_ids, this->_points), LeafNode(temp_ids, this->_points));
+			_rt->insert(idx_data);
+			return ;
+		}
+    }
+	
+	std::vector<size_t> temp_ids;
+	size_t pid;
+	if (!mem_manager.empty()) {
+		pid = *mem_manager.rbegin();
+		mem_manager.pop_back();
+	} else {
+		pid = this->_points.size();
+		this->_points.emplace_back(point);
+	}
+	temp_ids.emplace_back(pid);
+	std::pair<Box, LeafNode> idx_data(compute_mbr(temp_ids, this->_points), LeafNode(temp_ids, this->_points));
+	_rt->insert(idx_data);
+}
+
+bool erase(Point& point) {
+	bool erased = false;
+	
+    for (auto it=_rt->qbegin(bgi::contains(point)); it!=_rt->qend(); ++it) {
+		std::vector<size_t> temp_ids = std::get<1>(*it)._ids;
+		for (int i=0; i<temp_ids.size(); ++i) {
+			int pid = temp_ids[i];
+			if (bench::common::is_equal_point<Dim>(this->_points[pid], point)) {
+				mem_manager.push_back(pid);
+				temp_ids.erase(temp_ids.begin()+i);
+				erased = true;
+				break;
+			}
+		}
+		if (erased) {
+			_rt->remove(*it);
+			if (!temp_ids.empty()) {
+				std::pair<Box, LeafNode> idx_data(compute_mbr(temp_ids, this->_points), LeafNode(temp_ids, this->_points));
+				_rt->insert(idx_data);
+			}
+			break;
+		}
+    }
+
+	return erased;
+}
+
 inline size_t count() {
     return this->_points.size();
 }
@@ -161,7 +273,7 @@ inline size_t count() {
 // the index size is the sum of rtree and all identifiers
 inline size_t index_size() {
     auto rt_size = bench::common::get_boost_rtree_statistics(*(this->_rt));
-    return rt_size + count() * sizeof(size_t);
+    return rt_size + count() * sizeof(size_t) + mem_manager.size() * sizeof(size_t);
 }
 
 Points range_query(Box& box) {
@@ -199,6 +311,7 @@ Points range_query(Box& box) {
 
 private:
 Points& _points;
+std::vector<size_t> mem_manager;
 index_rtree_t* _rt;
 
 inline Box compute_mbr(std::vector<size_t>& ids, Points& points) {
@@ -217,6 +330,7 @@ inline Box compute_mbr(std::vector<size_t>& ids, Points& points) {
 }
 
 inline size_t predict(const LeafNode& leaf, double val) {
+	if (leaf._ids.size() <= 1) return 0;
     double guess = leaf.slope * val + leaf.intercept;
     if (guess < 0) {
         return 0;
@@ -228,6 +342,8 @@ inline size_t predict(const LeafNode& leaf, double val) {
 }
 
 inline std::pair<size_t, size_t> search_leaf(const LeafNode& leaf, Box& box) {
+	if (leaf.lr_error) return make_pair(0,leaf._ids.size()-1);
+	
     size_t pred_min = predict(leaf, box.min_corner()[sort_dim]);
     size_t pred_max = predict(leaf, box.max_corner()[sort_dim]);
     size_t lo = (leaf.max_err > pred_min) ? 0 : (pred_min - leaf.max_err);

@@ -9,9 +9,9 @@
 
 #include <boost/geometry/index/rtree.hpp>
 #include <boost/math/statistics/linear_regression.hpp>
-
-#include "../base_index.hpp"
+#include "../../utils/common.hpp"
 #include "../../utils/type.hpp"
+#include "../base_index.hpp"
 
 namespace bgi = boost::geometry::index;
 using boost::math::statistics::simple_ordinary_least_squares;
