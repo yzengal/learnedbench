@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "flood.hpp"
+#include "floodOct.hpp"
 #include "../nonlearned/fullscan.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
@@ -94,7 +94,7 @@ vector<int> testKDtree() {
 	auto start = std::chrono::steady_clock::now();
 	vector<int> ret;
 	
-	bench::index::Flood<DIM> kdtree(points);
+	bench::index::FloodOct<DIM,24> kdtree(points);
 	for (int j=0; j<m; ++j) {
 		
 		auto results = kdtree.range_query(boxes[j]);

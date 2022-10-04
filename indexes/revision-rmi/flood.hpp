@@ -22,52 +22,195 @@
 namespace bench { namespace index {
 
 // the sort dimension is always the last dimension
-template<size_t Dim, size_t K=10, size_t Eps=64, size_t SortDim=Dim-1>
+template<size_t Dim, size_t MaxElements=128, size_t Eps=64, size_t SortDim=Dim-1>
 class Flood : public BaseIndex {
 
 using Point = point_t<Dim>;
 using Points = std::vector<Point>;
 using Range = std::pair<size_t, size_t>;
 using Box = box_t<Dim>;
+using Counts = std::vector<int>;
 using layer1_type = rmi::LinearSpline;
 using layer2_type = rmi::LinearRegression;
 using Index = rmi::RmiLAbs<double, layer1_type, layer2_type>;
 	
 public:
 
-class Bucket {
+class OctreeNode {
     public:
+	static const int CHILD_SIZE = ((size_t)1)<<dim;
+	// Physical position/size. This implicitly defines the bounding 
+	// box of this node
+	Point origin;         //! The physical center of this node
+	Point halfDimension;  //! Half the width/height/depth of this node
+
+	// The tree has up to eight children and can additionally store
+	// a point, though in many applications only, the leaves will store data.
+	OctreeNode *children[CHILD_SIZE]; //! Pointers to child octants
+	
     Points _local_points;
+	Counts cnts; // number of same data points
     // eps for each bucket is fixed to 16 based on a micro benchmark
     Index* _local_pgm;
 
-    Bucket() : _local_pgm(nullptr) {} ;
+	OctreeNode(const Points& points) {
+		int n = points.size();
+		int oid = rand() % n;
+		origin = points[oid];
+		
+		halfDimension.fill(0.0);
+		for (int i=0; i<n; ++i) {
+			for (int j=0; j<dim; ++j) {
+				auto delta = fabs(origin[j] - points[i][j]);
+				if (delta > halfDimension[j])
+					halfDimension[j] = delta;
+			}
+		}
+		
+		// Initially, there are no children
+		_local_points.clear();
+		cnts.clear();
+		for(int i=0; i<CHILD_SIZE; ++i) 
+			children[i] = NULL;
+		
+		for (auto point : points) {
+			insert(point, 1);
+		}
+		_local_pgm = NULL;
+	}
+	
+	OctreeNode(const Point& _origin, const Point& _halfDimension) 
+		: origin(_origin), halfDimension(_halfDimension) {
+			// Initially, there are no children
+			_local_points.clear();
+			cnts.clear();
+			for(int i=0; i<CHILD_SIZE; ++i) 
+				children[i] = NULL;
+			if (this->_local_pgm != NULL)
+				delete this->_local_pgm;
+			this->_local_pgm = NULL;
+		}
 
-    ~Bucket() {
-        delete this->_local_pgm;
+
+    ~OctreeNode() {
+		// Recursively destroy octants
+		for(int i=0; i<CHILD_SIZE; ++i) {
+			if (children[i] != NULL)
+				delete children[i];
+		}
+		if (this->_local_pgm != NULL)
+			delete this->_local_pgm;
     }
+	
+	inline size_t index_size() {
+		size_t ret = sizeof(OctreeNode*)*CHILD_SIZE + sizeof(double)*dim*2;
+		
+		ret += sizeof(Point*) + sizeof(size_t) + sizeof(double)*dim*_local_points.size()
+		ret += sizeof(int*) + sizeof(size_t) + sizeof(int)*cnts.size();
+		for(int i=0; i<CHILD_SIZE; ++i) {
+			if (children[i] != NULL)
+				ret += children[i]->index_size();
+		}
+		
+		return ret;
+	}
 
-    inline void insert(Point& p) {
-        this->_local_points.emplace_back(p);
-    }
+	// Determine which octant of the tree would contain 'point'
+	int getOctantContainingPoint(const Point& point) const {
+		int oct = 0;
+		for (int i=0; i<dim; ++i) {
+			if (point[i] >= origin[i])
+				oct |= (1 << i);
+		}
+		return oct;
+	}
+	
+	bool isLeafNode() const {
+		return children[0] == NULL;
+	}
+	
+	void insert(const Point& point, int num=1) {
+		
+		// If this node doesn't have a data point yet assigned 
+		// and it is a leaf, then we're done!
+		if(isLeafNode()) {
+			
+			// check if the new point equals to any current point
+			for (int i=0; i<_local_points.size(); ++i) {
+				const Point& oldPoint = _local_points[i];
+				if (bench::common::is_equal_point<dim>(oldPoint, point)) {
+					cnts[i] += num;
+					return ;
+				}		
+			}
+			if(ids.size() < MaxElements) {
+				cnts.emplace_back(num);
+				_local_points.emplace_back(point);
+			} else {
+				// We're at a leaf, but there's already something here
+				// We will split this node so that it has 8 child octants
+				// and then insert the old data that was here, along with 
+				// this new data point
 
-    inline void build() {
-        if (_local_points.size() == 0) {
-            return;
-        }
-        // note points are already sorted by SortDim
-        std::vector<double> idx_data;
-        idx_data.reserve(_local_points.size());
-        for (const auto& p : _local_points) {
-            idx_data.emplace_back(std::get<SortDim>(p));
-        }
+				// Save this data point that was here for a later re-insert
 
-        // _local_pgm = new pgm::PGMIndex<double, 16>(idx_data);
-		// train 1-D learned index on projections
-		std::size_t index_budget = idx_data.size() * sizeof(double);
-		std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
-		if (layer2_size < 8) layer2_size = 8;
-		this->_local_pgm = new Index(idx_data, layer2_size);
+				// Split the current node and create new empty trees for each
+				// child octant.
+				Point newHalfDimension = halfDimension;
+				for (int i=0; i<dim; ++i)
+					newHalfDimension[i] *= .5f;
+				for(int j=0; j<CHILD_SIZE; ++j) {
+					// Compute new bounding box for this child
+					Point newOrigin = origin;
+					for (int i=0; i<dim; ++i) {
+						newOrigin[i] += halfDimension[i] * ((j&(1<<i)) ? .5f : -.5f);
+					}						
+					children[j] = new OctreeNode(newOrigin, newHalfDimension);
+				}
+
+				// Re-insert the old point, and insert this new point
+				// (We wouldn't need to insert from the root, because we already
+				// know it's guaranteed to be in this section of the tree)
+				for (int i=0; i<_local_points.size(); ++i) {
+					const Point& oldPoint = _local_points[i];
+					children[getOctantContainingPoint(oldPoint)]->insert(oldPoint, cnts[i]);
+				}
+				_local_points.clear();
+				cnts.clear();
+				children[getOctantContainingPoint(point)]->insert(point, num);
+			}
+		} else {
+			// We are at an interior node. Insert recursively into the 
+			// appropriate child octant
+			int octant = getOctantContainingPoint(point);
+			children[octant]->insert(point, num);
+		}
+	}
+
+    void DFS_build() {
+		if(isLeafNode()) {
+			if (_local_points.empty())
+				return;
+			// note points are already sorted by SortDim
+			std::vector<double> idx_data;
+			idx_data.reserve(_local_points.size());
+			for (const auto& p : _local_points) {
+				idx_data.emplace_back(std::get<SortDim>(p));
+			}
+
+			// _local_pgm = new pgm::PGMIndex<double, 16>(idx_data);
+			// train 1-D learned index on projections
+			std::size_t index_budget = idx_data.size() * sizeof(double);
+			std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
+			if (layer2_size < 8) layer2_size = 8;
+			this->_local_pgm = new Index(idx_data, layer2_size);
+			
+		} else {
+			for(int j=0; j<CHILD_SIZE; ++j) {
+				if (children[j] != NULL)
+					cildren[j]->DFS_build();
+			}
+		}
     }
 
     inline void search(Points& result, Box& box, size_t bucketID, std::unordered_set<double>& visit) {
