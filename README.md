@@ -28,6 +28,7 @@ We compare **six** recent multi-dimensional learned indices:
 - `gperftools`: https://github.com/gperftools/gperftools
 - `libtorch`: https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.4.0%2Bcpu.zip
 - `numpy` and `matplotlib` for result visualization
+- `google-benchmark`: https://github.com/google/benchmark
 
 ### Step 2: Build RSMI and ANN
 Most of the benchmark and indices (except `RSMI` and `ANN`) are implemented as header-only libraries. 
