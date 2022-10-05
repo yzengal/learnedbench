@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <vector>
 #include <chrono>
+#include <algorithm>
 
 #ifdef HEAP_PROFILE
 #include <gperftools/heap-profiler.h>
@@ -235,7 +236,7 @@ Points range_query(Box& box) {
 	for (size_t d=0; d<Dim; ++d) {
 		q[d] = (mnp[d]+mxp[d]) * 0.5;
 	}
-	radius = EPS + max(bench::common::eu_dist_square(box.min_corner(), q), 
+	radius = EPS + std::max(bench::common::eu_dist_square(box.min_corner(), q), 
 					bench::common::eu_dist_square(box.max_corner(), q));
     
 	#ifdef LOCAL_DEBUG

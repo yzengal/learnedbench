@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <unordered_set>
+#include <algorithm>
 
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"

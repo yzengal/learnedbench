@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <array>
 #include <chrono>
+#include <algorithm>
 #include <unordered_set>
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"

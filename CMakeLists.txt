@@ -54,8 +54,17 @@ if(RSMI)
     add_executable(bench_rsmi bench/bench_rsmi.cpp)
     target_link_libraries(bench_rsmi ${TPIE_LIBRARIES} ${TORCH_LIBRARIES} Boost::system Boost::filesystem pthread "${RSMI_PATH}/build/librsmi.a" -lsnappy)
   endif()
+  
+elseif(DATAGEN)
+  # ANN library path
+
+  include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS})
+
+  add_executable(datagen utils/datagen.cpp)
+  target_link_libraries(datagen ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
 
 else()
+
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)
   set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -64,9 +73,6 @@ else()
   set(ANN_PATH "/home/zengyuxiang/learnedbench/indexes/ann_1.1.2")
 
   include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS} ${RSMI_PATH} ${ANN_PATH})
-
-  add_executable(datagen utils/datagen.cpp)
-  target_link_libraries(datagen ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
 
   if(PROFILE)
     add_executable(bench2d_hp bench/bench.cpp)

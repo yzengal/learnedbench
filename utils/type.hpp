@@ -44,6 +44,9 @@ template<size_t dim>
 using vec_of_pointf_t = std::vector<pointf_t<dim>>;
 
 template<size_t dim>
+using vec_of_box_t = std::vector<box_t<dim>>;
+
+template<size_t dim>
 using knn_t = std::pair<point_t<dim>, size_t>;
 
 template<size_t dim>

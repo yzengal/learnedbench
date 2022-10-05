@@ -15,6 +15,7 @@
 #include <chrono>
 #include <queue>
 #include <cmath>
+#include <algorithm>
 #include <unordered_set>
 
 namespace bench { namespace index {

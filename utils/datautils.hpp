@@ -72,6 +72,37 @@ inline void gen_lognormal(const std::string& fname, const int n, const int d, co
     out.close();
 }
 
+// generate n d-dimensional uniform points in range [0, r]
+inline void gen_box(const std::string& fname, const int n, const int d, const double s) {
+	const double MAXL = 1000;
+    std::random_device rd;  
+    std::mt19937 gen(rd()); 
+    std::uniform_int_distribution<> dis(0, (int)MAXL);
+	std::uniform_int_distribution<> len(0, (int)MAXL*s);
+	std::vector<double> mn_corner(d), mx_corner(d);
+	
+    tpie::file_stream<double> out;
+    out.open(fname);
+	for (int i=0; i<n; ++i) {
+		bool flag = true;
+		for (int j=0; j<d; ++j) {
+			mn_corner[j] = dis(gen);
+		}
+		int L = len(gen);
+		for (int j=0; j<d; ++j) {
+			mx_corner[j] = mn_corner[j] + L;s
+		}
+		for (int j=0; j<d; ++j) {
+			out.write(mn_corner[j]);
+		}
+		for (int j=0; j<d; ++j) {
+			out.write(mx_corner[j]);
+		}
+	}
+    
+    out.close();
+}
+
 
 struct dist_info_t {
     std::string dist_name;
@@ -114,6 +145,29 @@ inline void read_points(vec_of_point_t<dim>& out_points, const std::string& fnam
             p[j] = in.read();
         }
         out_points.emplace_back(p);
+    }
+
+    in.close();
+    tpie::tpie_finish();
+}
+
+template<size_t dim>
+inline void read_boxes(vec_of_box_t<dim>& out_boxes, const std::string& fname, const size_t N) {
+    out_points.reserve(N);
+
+    tpie::tpie_init();
+    tpie::file_stream<double> in;
+    in.open(fname);
+
+    point_t<dim> mn_corner, mx_corner;
+    for (size_t i=0; i<N; ++i) {
+        for (size_t j=0; j<dim; ++j) {
+            mn_corner[j] = in.read();
+        }
+		for (size_t j=0; j<dim; ++j) {
+            mx_corner[j] = in.read();
+        }
+        out_boxes.emplace_back(box_t<dim>(mn_corner, mx_corner));
     }
 
     in.close();

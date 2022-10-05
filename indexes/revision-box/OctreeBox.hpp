@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include <unordered_set>
 
 #include "../../utils/type.hpp"
@@ -52,7 +53,7 @@ namespace bench { namespace index {
 		public:
 		OctreeBoxNode(const Boxes& boxes) {
 			size_t n = boxes.size();
-			MAX_DEPTH = max(1.0, 1.0+log2(n*1.0));
+			MAX_DEPTH = std::max(1.0, 1.0+log2(n*1.0));
 			
 			origin.fill(0.0);
 			halfDimension.fill(0.0);
@@ -66,7 +67,7 @@ namespace bench { namespace index {
 			for (int i=0; i<n; ++i) {
 				Point bound = bench::common::get_boundary_point2box(origin, boxes[i]);
 				for (int j=0; j<dim; ++j) {
-					halfDimension[j] = max(halfDimension[j], bound[j]);
+					halfDimension[j] = std::max(halfDimension[j], bound[j]);
 				}
 			}
 			

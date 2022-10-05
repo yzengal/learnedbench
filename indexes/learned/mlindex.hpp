@@ -14,6 +14,7 @@
 #include <chrono>
 #include <queue>
 #include <cmath>
+#include <algorithm>
 #include <unordered_set>
 
 namespace bench { namespace index {
@@ -100,11 +101,11 @@ MLIndex(Points& points) {
 				projections[k] += delta * (k-j);
 		}
     }
-	for (size_t sz=projections.size()-1,i=0; i<sz; ++i) {
-		printf("%.6lf ", projections[i]);
-		assert(i==0 || projections[i]>projections[i-1]);
-    }
-	cout << endl;
+	// for (size_t sz=projections.size()-1,i=0; i<sz; ++i) {
+		// printf("%.6lf ", projections[i]);
+		// assert(i==0 || projections[i]>projections[i-1]);
+    // }
+	// std::cout << endl;
 	// sort(projections.begin(), projections.end());
     
     this->_pgm = new pgm::PGMIndex<double, eps>(projections);
