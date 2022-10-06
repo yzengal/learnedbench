@@ -63,6 +63,11 @@ elseif(DATAGEN)
   add_executable(datagen utils/datagen.cpp)
   target_link_libraries(datagen ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
 
+  add_executable(boxgen utils/boxgen.cpp)
+  target_link_libraries(boxgen ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
+
+  add_executable(boxshow utils/boxshow.cpp)
+  target_link_libraries(boxshow ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
 else()
 
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)

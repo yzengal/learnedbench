@@ -88,9 +88,8 @@ inline void gen_box(const std::string& fname, const int n, const int d, const do
 		for (int j=0; j<d; ++j) {
 			mn_corner[j] = dis(gen);
 		}
-		int L = len(gen);
 		for (int j=0; j<d; ++j) {
-			mx_corner[j] = mn_corner[j] + L;s
+			mx_corner[j] = mn_corner[j] + len(gen);
 		}
 		for (int j=0; j<d; ++j) {
 			out.write(mn_corner[j]);
@@ -153,7 +152,7 @@ inline void read_points(vec_of_point_t<dim>& out_points, const std::string& fnam
 
 template<size_t dim>
 inline void read_boxes(vec_of_box_t<dim>& out_boxes, const std::string& fname, const size_t N) {
-    out_points.reserve(N);
+    out_boxes.reserve(N);
 
     tpie::tpie_init();
     tpie::file_stream<double> in;

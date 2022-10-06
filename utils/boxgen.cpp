@@ -53,7 +53,7 @@ int main(int argc, char const *argv[]) {
             }
 			
         } else {
-            std::cout << "Arg --task is in [gen_data, process_csv]." << std::endl;
+            std::cout << "Arg --task is in [gen_box]." << std::endl;
             tpie::tpie_finish();
             return 1;
         }
