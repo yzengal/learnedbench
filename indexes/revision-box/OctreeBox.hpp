@@ -296,7 +296,7 @@ namespace bench { namespace index {
 	template<size_t dim, size_t MaxElements>
 	int OctreeBoxNode<dim,MaxElements>::MAX_DEPTH;
 	
-	template<size_t dim=2, size_t MaxElements=1>
+	template<size_t dim=2, size_t MaxElements=128>
 	class OctreeBox : public BaseIndex {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;

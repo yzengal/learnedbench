@@ -68,6 +68,18 @@ elseif(DATAGEN)
 
   add_executable(boxshow utils/boxshow.cpp)
   target_link_libraries(boxshow ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
+  
+elseif(TESTBOX)
+  # the other benchmarks are compiled using cxx17 (required by PGM-Index)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+  include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS})
+
+  add_executable(bench2d_box bench/bench_box.cpp)
+  target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
+  target_compile_definitions(bench2d_default PUBLIC PARTITION_NUM=100)
+  
 else()
 
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)

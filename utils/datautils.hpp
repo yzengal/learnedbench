@@ -74,7 +74,7 @@ inline void gen_lognormal(const std::string& fname, const int n, const int d, co
 
 // generate n d-dimensional uniform points in range [0, r]
 inline void gen_box(const std::string& fname, const int n, const int d, const double s) {
-	const double MAXL = 1000;
+	const double MAXL = 10000;
     std::random_device rd;  
     std::mt19937 gen(rd()); 
     std::uniform_int_distribution<> dis(0, (int)MAXL);
