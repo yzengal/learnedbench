@@ -17,7 +17,7 @@ namespace bench { namespace index {
 	/**!
 	 *
 	 */
-	template<size_t dim=2, size_t MaxElements=1>
+	template<size_t dim=2, size_t MaxElements=129, size_t MAX_DEPTH=10>
 	class OctreeBoxNode {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;
@@ -28,7 +28,6 @@ namespace bench { namespace index {
 		
 		public:
 		static const int CHILD_SIZE = ((size_t)1)<<dim;
-		static int MAX_DEPTH;
 		
 		// Physical position/size. This implicitly defines the bounding 
 		// box of this node
@@ -53,7 +52,6 @@ namespace bench { namespace index {
 		public:
 		OctreeBoxNode(const Boxes& boxes) {
 			size_t n = boxes.size();
-			MAX_DEPTH = std::max(1.0, 1.0+log2(n*1.0));
 			
 			origin.fill(0.0);
 			halfDimension.fill(0.0);
@@ -293,16 +291,14 @@ namespace bench { namespace index {
 		}
 
 	};
-	template<size_t dim, size_t MaxElements>
-	int OctreeBoxNode<dim,MaxElements>::MAX_DEPTH;
 	
-	template<size_t dim=2, size_t MaxElements=128>
+	template<size_t dim=2, size_t MaxElements=128, size_t MaxDepth=2>
 	class OctreeBox : public BaseIndex {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;
 		using Boxes = std::vector<box_t<dim>>;
 		using BoxID_t = int;
-		using OctreeBoxNode_t = OctreeBoxNode<dim, MaxElements>;
+		using OctreeBoxNode_t = OctreeBoxNode<dim, MaxElements, MaxDepth>;
 		
 		private:
 		size_t num_of_boxes;

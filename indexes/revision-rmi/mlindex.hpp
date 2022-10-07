@@ -111,7 +111,7 @@ MLIndex(Points& points) {
     // }
     
 	// train 1-D learned index on projections
-	std::size_t index_budget = points.size() * sizeof(double);
+	std::size_t index_budget = std::min((size_t)28.11*1024*1024, points.size()*sizeof(double));
 	std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
     this->_rmi = new RMI_t(projections, layer2_size);
 

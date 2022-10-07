@@ -30,14 +30,14 @@ using Boxes = std::vector<box_t<BENCH_DIM>>;
 // non-learned indices
 using RTree = bench::index::RTree<BENCH_DIM>;
 using RStarTree = bench::index::RStarTree<BENCH_DIM>;
-using QDTree = bench::index::OctreeBox<BENCH_DIM>;
+using QDTree = bench::index::QDTree<BENCH_DIM>;
 
 // grid indices
 using UG = bench::index::UG<BENCH_DIM, PARTITION_NUM>;
 using EDG = bench::index::EDG<BENCH_DIM, PARTITION_NUM>;
 
 // linear scan
-using FS = bench::index::FullScan<BENCH_DIM>;    
+using FS = bench::index::FullScanBox<BENCH_DIM>;    
 
 struct IndexSet {
     RTree*     rtree;
@@ -53,7 +53,7 @@ struct IndexSet {
         qdtree(nullptr),
         ug(nullptr),
         edg(nullptr),
-        fs(nullptr), {}
+        fs(nullptr) {}
 
     ~IndexSet() {
         delete rtree;
@@ -109,6 +109,7 @@ int main(int argc, char **argv) {
     std::string fname = argv[2]; // data file name
     size_t N = std::stoi(argv[3]); // dataset size
     std::string mode = argv[4]; // bench mode {"range"}
+    double max_side = std::stof(argv[5]); // dataset size
 
     std::cout << "====================================" << std::endl;
     std::cout << "Load data: " << fname << std::endl;
@@ -124,14 +125,14 @@ int main(int argc, char **argv) {
 
 #ifndef HEAP_PROFILE
     
-    auto range_queries = bench::query::sample_box_queries();
+    auto range_queries = bench::query::sample_box_queries<BENCH_DIM>();
 
     build_index(idx_set, index, boxes);
 
     if (index.compare("rtree") == 0) {
         assert(idx_set.rtree != nullptr);
         if (mode.compare("range") == 0) {
-            bench::query::batch_range_queries(*(idx_set.rtree), range_queries);
+            bench::query::batch_range_queries(*(idx_set.rtree), max_side, range_queries);
             return 0;
         }
     }
@@ -139,7 +140,7 @@ int main(int argc, char **argv) {
     if (index.compare("rstar") == 0) {
         assert(idx_set.rstartree != nullptr);
         if (mode.compare("range") == 0) {
-            bench::query::batch_range_queries(*(idx_set.rstartree), range_queries);
+            bench::query::batch_range_queries(*(idx_set.rstartree), max_side, range_queries);
             return 0;
         }
     }
@@ -147,7 +148,7 @@ int main(int argc, char **argv) {
     if (index.compare("qdtree") == 0) {
         assert(idx_set.qdtree != nullptr);
         if (mode.compare("range") == 0) {
-            bench::query::batch_range_queries(*(idx_set.qdtree), range_queries);
+            bench::query::batch_range_queries(*(idx_set.qdtree), max_side, range_queries);
             return 0;
         }
     }
@@ -155,7 +156,7 @@ int main(int argc, char **argv) {
     if (index.compare("ug") == 0) {
         assert(idx_set.ug != nullptr);
         if (mode.compare("range") == 0) {
-            bench::query::batch_range_queries(*(idx_set.ug), range_queries);
+            bench::query::batch_range_queries(*(idx_set.ug), max_side, range_queries);
             return 0;
         }
     }
@@ -163,7 +164,7 @@ int main(int argc, char **argv) {
     if (index.compare("edg") == 0) {
         assert(idx_set.edg != nullptr);
         if (mode.compare("range") == 0) {
-            bench::query::batch_range_queries(*(idx_set.edg), range_queries);
+            bench::query::batch_range_queries(*(idx_set.edg), max_side, range_queries);
             return 0;
         }
     }
@@ -171,7 +172,7 @@ int main(int argc, char **argv) {
     if (index.compare("fs") == 0) {
         assert(idx_set.fs != nullptr);
         if (mode.compare("range") == 0) {
-            bench::query::batch_range_queries(*(idx_set.fs), range_queries);
+            bench::query::batch_range_queries(*(idx_set.fs), max_side, range_queries);
             return 0;
         }
     }

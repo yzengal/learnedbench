@@ -77,9 +77,55 @@ elseif(TESTBOX)
   include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS})
 
   add_executable(bench2d_box bench/bench_box.cpp)
-  target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
-  target_compile_definitions(bench2d_default PUBLIC PARTITION_NUM=100)
+  target_link_libraries(bench2d_box ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
+  target_compile_definitions(bench2d_box PUBLIC PARTITION_NUM=100)
   
+elseif(TESTJOIN)
+
+  # the other benchmarks are compiled using cxx17 (required by PGM-Index)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+  # ANN library path
+  set(ANN_PATH "/home/zengyuxiang/learnedbench/indexes/ann_1.1.2")
+
+  include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS} ${RSMI_PATH} ${ANN_PATH})
+
+    add_executable(bench2djoin_fs bench/bench_join.cpp)
+    target_link_libraries(bench2djoin_fs ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2djoin_fs PUBLIC PARTITION_NUM=60)
+	
+	add_executable(bench2djoin_osm bench/bench_join.cpp)
+    target_link_libraries(bench2djoin_osm ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2djoin_osm PUBLIC PARTITION_NUM=250)
+
+    add_executable(bench3djoin_toronto bench/bench_join.cpp)
+    target_link_libraries(bench3djoin_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench3djoin_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+	
+elseif(TESTRMI)
+
+  # the other benchmarks are compiled using cxx17 (required by PGM-Index)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+  # ANN library path
+  set(ANN_PATH "/home/zengyuxiang/learnedbench/indexes/ann_1.1.2")
+
+  include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS} ${RSMI_PATH} ${ANN_PATH})
+
+    add_executable(bench2drmi_fs bench/bench_rmi.cpp)
+    target_link_libraries(bench2drmi_fs ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2drmi_fs PUBLIC PARTITION_NUM=60)
+	
+	add_executable(bench2drmi_osm bench/bench_rmi.cpp)
+    target_link_libraries(bench2drmi_osm ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2drmi_osm PUBLIC PARTITION_NUM=250)
+
+    add_executable(bench3drmi_toronto bench/bench_rmi.cpp)
+    target_link_libraries(bench3drmi_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench3drmi_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+	
 else()
 
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)
@@ -95,32 +141,30 @@ else()
     add_executable(bench2d_hp bench/bench.cpp)
     target_link_libraries(bench2d_hp ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
   else()
-    # add_executable(bench2d_default bench/bench.cpp)
-    # target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
-    # target_compile_definitions(bench2d_default PUBLIC PARTITION_NUM=100)
+  
     
-    # add_executable(bench2d_fs bench/bench.cpp)
-    # target_link_libraries(bench2d_fs ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
-    # target_compile_definitions(bench2d_fs PUBLIC PARTITION_NUM=60)
+    add_executable(bench2d_fs bench/bench.cpp)
+    target_link_libraries(bench2d_fs ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2d_fs PUBLIC PARTITION_NUM=60)
 
-    # add_executable(bench2d_osm bench/bench.cpp)
-    # target_link_libraries(bench2d_osm ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
-    # target_compile_definitions(bench2d_osm PUBLIC PARTITION_NUM=250)
+    add_executable(bench2d_osm bench/bench.cpp)
+    target_link_libraries(bench2d_osm ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2d_osm PUBLIC PARTITION_NUM=250)
 
-    # add_executable(bench3d_toronto bench/bench.cpp)
-    # target_link_libraries(bench3d_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
-    # target_compile_definitions(bench3d_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+    add_executable(bench3d_toronto bench/bench.cpp)
+    target_link_libraries(bench3d_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench3d_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
 
     # add_executable(bench4d_default bench/bench.cpp)
-    # target_link_libraries(bench4d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
+    # target_link_libraries(bench4d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
     # target_compile_definitions(bench4d_default PUBLIC BENCH_DIM=4 PARTITION_NUM=10)
 
     # add_executable(bench6d_default bench/bench.cpp)
-    # target_link_libraries(bench6d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
+    # target_link_libraries(bench6d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
     # target_compile_definitions(bench6d_default PUBLIC BENCH_DIM=6 PARTITION_NUM=5)
 
     # add_executable(bench8d_default bench/bench.cpp)
-    # target_link_libraries(bench8d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
+    # target_link_libraries(bench8d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
     # target_compile_definitions(bench8d_default PUBLIC BENCH_DIM=8 PARTITION_NUM=4)
 
     # add_executable(bench10d_default bench/bench.cpp)
@@ -203,13 +247,13 @@ else()
     # target_link_libraries(bench3d_e1024_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a")
     # target_compile_definitions(bench3d_e1024_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20 INDEX_ERROR_THRESHOLD=1024)
 
-    add_executable(bench2d_default bench/bench.cpp)
-    target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -lsnappy)
-    target_compile_definitions(bench2d_default PUBLIC PARTITION_NUM=100)
+    # add_executable(bench2d_default bench/bench.cpp)
+    # target_link_libraries(bench2d_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -lsnappy)
+    # target_compile_definitions(bench2d_default PUBLIC PARTITION_NUM=100)
 
-    add_executable(bench3d_toronto bench/bench.cpp)
-    target_link_libraries(bench3d_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -lsnappy)
-    target_compile_definitions(bench3d_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+    # add_executable(bench3d_toronto bench/bench.cpp)
+    # target_link_libraries(bench3d_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -lsnappy)
+    # target_compile_definitions(bench3d_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
 
     
   endif()

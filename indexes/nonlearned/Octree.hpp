@@ -16,7 +16,7 @@ namespace bench { namespace index {
 	/**!
 	 *
 	 */
-	template<size_t dim, size_t MaxElements=1>
+	template<size_t dim, size_t MaxElements=128>
 	class OctreeNode {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;
@@ -449,7 +449,7 @@ namespace bench { namespace index {
 		}
 	};
 
-	template<size_t dim=2, size_t MaxElements=1>
+	template<size_t dim=2, size_t MaxElements=128>
 	class Octree : public BaseIndex {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;

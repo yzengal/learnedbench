@@ -17,11 +17,12 @@ DEFAULT_S=1
 
 for s in 0.005 0.01 0.02 0.05 0.1
 do
-	for index in "rtree" "rstar" "fs" "edg" "ug" "qdtree"
+	# for index in "rtree" "rstar" "fs" "edg" "ug" "qdtree"
+	for index in "qdtree"
 	do
 		fname="box_${DEFAULT_N}m_${DEFAULT_D}_${s}"
 		echo "Benchmark ${index} dataset ${fname}"
 		real_n=$[$DEFAULT_N * $MILLION]
-		"${BENCH_BIN_PATH}bench2d_box" ${index} "${SYN_DATA_PATH}${fname}" ${real_n} "range" > "${RESULT_PATH}${index}_box_${s}"
+		"${BENCH_BIN_PATH}bench2d_box" ${index} "${SYN_DATA_PATH}${fname}" ${real_n} "range" ${s} > "${RESULT_PATH}${index}_box_${s}"
 	done
 done

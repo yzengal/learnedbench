@@ -7,7 +7,6 @@
 #include <cmath>
 
 #include "../utils/type.hpp"
-#include "../indexes/nonlearned/fullscan.hpp"
 
 
 namespace bench { namespace query {
@@ -29,7 +28,7 @@ static std::vector<box_t<dim>> sample_box_queries(const int MAXL = 10000, size_t
 	point_t<dim> mn_corner, mx_corner;
 	
 	for (size_t i=0; i<s; ++i) {
-		for (int j=0; j<d; ++j) {
+		for (int j=0; j<dim; ++j) {
 			mn_corner[j] = dis(gen);
 			mx_corner[j] = mn_corner[j] + L;
 		}

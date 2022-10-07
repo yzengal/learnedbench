@@ -125,7 +125,7 @@ point_t<dim> get_boundary_point2box(const point_t<dim>& p, const box_t<dim>& box
 	point_t<dim> ret;
 	
 	for (int d=0; d<dim; ++d) {
-        ret[d] = max(fabs(mnp[d]-p[d]), fabs(mxp[d]-p[d]));
+        ret[d] = std::max(std::fabs(mnp[d]-p[d]), std::fabs(mxp[d]-p[d]));
     }
 	
     return ret;

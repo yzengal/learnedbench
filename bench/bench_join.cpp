@@ -55,7 +55,6 @@ struct IndexSet {
     RStarTree* rstartree;
     KDTree*    kdtree;
     ANNKDTree* annkdtree;
-    QDTree*    qdtree;
 	OCTree*    octree;
     UG*        ug;
     EDG*       edg;
@@ -71,7 +70,6 @@ struct IndexSet {
         rstartree(nullptr),
         kdtree(nullptr),
         annkdtree(nullptr),
-        qdtree(nullptr),
 		octree(nullptr),
         ug(nullptr),
         edg(nullptr),
@@ -86,7 +84,6 @@ struct IndexSet {
         delete rtree;
         delete kdtree;
         delete annkdtree;
-        delete qdtree;
 		delete octree;
         delete ug;
         delete edg;
@@ -101,9 +98,7 @@ struct IndexSet {
 
 
 static void build_index(IndexSet& idx_set, const std::string& idx_name, Points& points) {
-	const int MaxElements = 128;
-	
-    if (idx_name.compare("rtree") == 0) {
+	if (idx_name.compare("rtree") == 0) {
         idx_set.rtree = new RTree(points);
         return;
     }
@@ -123,13 +118,8 @@ static void build_index(IndexSet& idx_set, const std::string& idx_name, Points& 
         return;
     }
 
-    if (idx_name.compare("qdtree") == 0) {
-        idx_set.qdtree = new QDTree(points);
-        return;
-    }
-	
     if (idx_name.compare("octree") == 0) {
-        idx_set.octree = new Octree(points, MaxElements);
+        idx_set.octree = new OCTree(points);
         return;
     }
 
@@ -208,7 +198,7 @@ int main(int argc, char **argv) {
     if (index.compare("rtree") == 0) {
         assert(idx_set.rtree != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.rtree), range_queries);
+            bench::query::batch_join_queries(*(idx_set.rtree), join_queries);
             return 0;
         }
     }
@@ -216,7 +206,7 @@ int main(int argc, char **argv) {
     if (index.compare("rstar") == 0) {
         assert(idx_set.rstartree != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.rstartree), knn_queries);
+            bench::query::batch_join_queries(*(idx_set.rstartree), join_queries);
             return 0;
         }
     }
@@ -224,7 +214,7 @@ int main(int argc, char **argv) {
     if (index.compare("kdtree") == 0) {
         assert(idx_set.kdtree != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.kdtree), knn_queries);
+            bench::query::batch_join_queries(*(idx_set.kdtree), join_queries);
             return 0;
         }
     }
@@ -232,15 +222,15 @@ int main(int argc, char **argv) {
     if (index.compare("ann") == 0) {
         assert(idx_set.annkdtree != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.annkdtree), knn_queries);
+            bench::query::batch_join_queries(*(idx_set.annkdtree), join_queries);
             return 0;
         }
     }
 
     if (index.compare("octree") == 0) {
-        assert(idx_set.qdtree != nullptr);
+        assert(idx_set.octree != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.qdtree), range_queries);
+            bench::query::batch_join_queries(*(idx_set.octree), join_queries);
             return 0;
         }
     }
@@ -248,7 +238,7 @@ int main(int argc, char **argv) {
     if (index.compare("fs") == 0) {
         assert(idx_set.fs != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.fs), knn_queries);
+            bench::query::batch_join_queries(*(idx_set.fs), join_queries);
             return 0;
         }
     }
@@ -256,7 +246,7 @@ int main(int argc, char **argv) {
     if (index.compare("zm") == 0) {
         assert(idx_set.zm != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.zm), knn_queries);
+            bench::query::batch_join_queries(*(idx_set.zm), join_queries);
             return 0;
         }
     }
@@ -264,7 +254,7 @@ int main(int argc, char **argv) {
     if (index.compare("mli") == 0) {
         assert(idx_set.mli != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.mli), knn_queries);
+            bench::query::batch_join_queries(*(idx_set.mli), join_queries);
             return 0;
         }
     }
@@ -272,7 +262,7 @@ int main(int argc, char **argv) {
     if (index.compare("lisa") == 0) {
         assert(idx_set.lisa != nullptr);
         if (mode.compare("join") == 0) {
-            bench::query::batch_join_queries(*(idx_set.lisa), knn_queries);
+            bench::query::batch_join_queries(*(idx_set.lisa), join_queries);
             return 0;
         }
     }

@@ -97,7 +97,7 @@ class EDG : public BaseIndex {
 		}
 
 		// Boxes candidates;
-		unordered_set<BoxID_t> visit;
+		std::unordered_set<BoxID_t> visit;
 		Boxes results;
 
 		// find candidate boxes
@@ -148,7 +148,7 @@ class EDG : public BaseIndex {
 		
 	private:
 	size_t num_of_boxes;
-	std::array<vector<BoxID_t>, bench::common::ipow(K, dim)> buckets;
+	std::array<std::vector<BoxID_t>, bench::common::ipow(K, dim)> buckets;
 	std::array<size_t, dim> dim_offset;
 	Partitions partitions; // bucket boundaries on each dimension
 
@@ -175,8 +175,8 @@ class EDG : public BaseIndex {
     }
 	
     // compute the bucket ID of a given box
-    inline vector<size_t> compute_ids(const Box& box) {
-		vector<size_t> ret;
+    inline std::vector<size_t> compute_ids(const Box& box) {
+		std::vector<size_t> ret;
 		const Point mxp = box.max_corner(), mnp = box.min_corner();
 		Point p;
 		

@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "rtreeBox.hpp"
+#include "geosBox.hpp"
 #include "fullscanBox.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
@@ -97,7 +97,7 @@ vector<int> testMyIndex() {
 	auto start = std::chrono::steady_clock::now();
 	vector<int> ret;
 	
-	bench::index::RTree<DIM> myIndex(inputs);
+	bench::index::QDTree<DIM> myIndex(inputs);
 	for (int j=0; j<m; ++j) {
 		auto results = myIndex.range_query(boxes[j]);
 		cout << results.size() << " ";

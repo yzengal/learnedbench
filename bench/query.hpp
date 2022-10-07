@@ -192,7 +192,7 @@ static std::map<size_t, std::vector<vec_of_point_t<dim> > > sample_join_queries(
 	}
     
 
-    std::map<size_t, vector<vec_of_point_t<dim> > > join_queries;
+    std::map<size_t, std::vector<vec_of_point_t<dim> > > join_queries;
 
     for (auto k : ks) {
 		join_queries[k] = pointsVec;
@@ -202,11 +202,11 @@ static std::map<size_t, std::vector<vec_of_point_t<dim> > > sample_join_queries(
 }
 
 template<class Index, size_t Dim>
-static void batch_join_queries(Index& index, std::map<size_t, std::vector<vec_of_point_t<dim> > >& join_queries) {
+static void batch_join_queries(Index& index, std::map<size_t, std::vector<vec_of_point_t<Dim> > >& join_queries) {
     int ks[6] = {1, 10, 100, 500, 1000, 10000};
 
     for (auto k : ks) {
-		std::vector<vec_of_point_t<dim> > pointsVec = join_queries[k];
+		std::vector<vec_of_point_t<Dim> > pointsVec = join_queries[k];
 		double avg_knn_time = 0.0;
 		for (size_t i=0; i<pointsVec.size(); ++i) {			
 			for (auto& q_point : pointsVec[i]) {

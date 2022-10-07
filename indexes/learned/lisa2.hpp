@@ -107,10 +107,22 @@ LISA2(Points& points) {
     }
 
     // make sure there is no duplicate keys
-    for (size_t i=0; i<points.size()-1; ++i) {
-        if (projections[i] == projections[i+1]) { 
-            projections[i+1] = (projections[i] + projections[i+2]) / 2.0;
-        }
+    // for (size_t i=0; i<points.size()-1; ++i) {
+        // if (projections[i] == projections[i+1]) { 
+            // projections[i+1] = (projections[i] + projections[i+2]) / 2.0;
+        // }
+    // }
+	
+	// make sure there is no duplicate keys
+    for (size_t sz=projections.size()-1,i=0; i<sz; ) {
+		size_t j = i++;
+		while (i<sz && projections[i]==projections[j]) ++i;
+		if (i - j > 1) {
+			double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
+			delta /= (i - j);
+			for (size_t k=j; k<i; ++k) 
+				projections[k] += delta * (k-j);
+		}
     }
     
     // train 1-D learned index on projections
