@@ -61,6 +61,7 @@ class Bucket {
         for (const auto& p : _local_points) {
             idx_data.emplace_back(std::get<SortDim>(p));
         }
+		std::sort(idx_data.begin(), idx_data.end());
 
 		std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
 		if (layer2_size < 8) layer2_size = 8;

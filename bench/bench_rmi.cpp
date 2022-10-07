@@ -87,16 +87,9 @@ int main(int argc, char **argv) {
     Points points;
     bench::utils::read_points(points, fname, N);
     IndexSet idx_set;
-
-#ifdef HEAP_PROFILE
-    build_index(idx_set, index, points);
-    return 0;
-#endif
-
-#ifndef HEAP_PROFILE
     
-    auto range_queries = bench::query::sample_range_queries(points, 20);
-    auto knn_queries = bench::query::sample_knn_queries(points, 20);
+    auto range_queries = bench::query::sample_range_queries(points);
+    auto knn_queries = bench::query::sample_knn_queries(points);
 
     build_index(idx_set, index, points);
     
@@ -141,6 +134,4 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
-
-#endif
 }

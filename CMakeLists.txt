@@ -126,6 +126,21 @@ elseif(TESTRMI)
     target_link_libraries(bench3drmi_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
     target_compile_definitions(bench3drmi_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
 	
+	add_executable(bench2drmi_default bench/bench_rmi.cpp)
+    target_link_libraries(bench2drmi_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2drmi_default PUBLIC PARTITION_NUM=100)
+	
+	add_executable(bench4drmi_default bench/bench_rmi.cpp)
+    target_link_libraries(bench4drmi_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench4drmi_default PUBLIC BENCH_DIM=4 PARTITION_NUM=10)
+
+    add_executable(bench6drmi_default bench/bench_rmi.cpp)
+    target_link_libraries(bench6drmi_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench6drmi_default PUBLIC BENCH_DIM=6 PARTITION_NUM=5)
+
+    add_executable(bench8drmi_default bench/bench_rmi.cpp)
+    target_link_libraries(bench8drmi_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    target_compile_definitions(bench8drmi_default PUBLIC BENCH_DIM=8 PARTITION_NUM=4)
 else()
 
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)
