@@ -4,7 +4,6 @@
 #include <cmath>
 #include <vector>
 #include <unordered_set>
-#include <algorithm>
 
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
@@ -17,7 +16,7 @@ namespace bench { namespace index {
 	/**!
 	 *
 	 */
-	template<size_t dim, size_t MaxElements=1>
+	template<size_t dim, size_t MaxElements=128>
 	class OctreeNode {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;
@@ -28,6 +27,7 @@ namespace bench { namespace index {
 		
 		public:
 		static const int CHILD_SIZE = ((size_t)1)<<dim;
+		static size_t MAX_DEPTH;
 		
 		// Physical position/size. This implicitly defines the bounding 
 		// box of this node
@@ -50,7 +50,8 @@ namespace bench { namespace index {
 		 */
 
 		public:
-		OctreeNode(const Points& points) {
+		OctreeNode(const Points& points, size_t _MAX_DEPTH) {
+			this->MAX_DEPTH = _MAX_DEPTH;
 			int n = points.size();
 			int oid = rand() % n;
 			origin = points[oid];
@@ -137,11 +138,7 @@ namespace bench { namespace index {
 			return children[0] == NULL;
 		}
 		
-		#ifdef LOCAL_DEBUG
 		void insert(const Points& points, const int pid, int num=1, int dep=0) {
-		#else
-		void insert(const Points& points, const int pid, int num=1) {
-		#endif
 			
 			const Point& point = points[pid];
 			
@@ -158,7 +155,7 @@ namespace bench { namespace index {
 			// If this node doesn't have a data point yet assigned 
 			// and it is a leaf, then we're done!
 			if(isLeafNode()) {
-				assert(ids.size() == cnts.size());
+				// assert(ids.size() == cnts.size());
 				
 				// check if the new point equals to any current point
 				for (int i=0; i<ids.size(); ++i) {
@@ -174,7 +171,7 @@ namespace bench { namespace index {
 						return ;
 					}		
 				}
-				if(ids.size() < MaxElements) {
+				if(dep>=MAX_DEPTH || ids.size()<MaxElements) {
 					cnts.emplace_back(num);
 					ids.emplace_back(pid);
 				} else {
@@ -204,29 +201,17 @@ namespace bench { namespace index {
 					// know it's guaranteed to be in this section of the tree)
 					for (int i=0; i<ids.size(); ++i) {
 						const Point& oldPoint = points[ids[i]];
-						#ifdef LOCAL_DEBUG
 						children[getOctantContainingPoint(oldPoint)]->insert(points, ids[i], cnts[i], dep+1);
-						#else
-						children[getOctantContainingPoint(oldPoint)]->insert(points, ids[i], cnts[i]);
-						#endif
 					}
 					ids.clear();
 					cnts.clear();
-					#ifdef LOCAL_DEBUG
 					children[getOctantContainingPoint(point)]->insert(points, pid, num, dep+1);
-					#else
-					children[getOctantContainingPoint(point)]->insert(points, pid, num);
-					#endif
 				}
 			} else {
 				// We are at an interior node. Insert recursively into the 
 				// appropriate child octant
 				int octant = getOctantContainingPoint(point);
-				#ifdef LOCAL_DEBUG
 				children[octant]->insert(points, pid, num, dep+1);
-				#else
-				children[octant]->insert(points, pid, num);
-				#endif
 			}
 		}
 		
@@ -356,8 +341,8 @@ namespace bench { namespace index {
 					// Compute the min/max corners of this child octant
 					Point cmax = children[j]->origin, cmin = children[j]->origin;
 					for (int i=0; i<dim; ++i) {
-						cmax[i] += children[i]->halfDimension[i];
-						cmin[i] -= children[i]->halfDimension[i];
+						cmax[i] += children[j]->halfDimension[i];
+						cmin[i] -= children[j]->halfDimension[i];
 					}
 					
 					// If the query rectangle is outside the child's bounding box, 
@@ -435,8 +420,8 @@ namespace bench { namespace index {
 					// Compute the min/max corners of this child octant
 					Point cmax = children[j]->origin, cmin = children[j]->origin;
 					for (int i=0; i<dim; ++i) {
-						cmax[i] += children[i]->halfDimension[i];
-						cmin[i] -= children[i]->halfDimension[i];
+						cmax[i] += children[j]->halfDimension[i];
+						cmin[i] -= children[j]->halfDimension[i];
 					}
 					
 					// If the query rectangle is outside the child's bounding box, 
@@ -449,8 +434,10 @@ namespace bench { namespace index {
 			}			
 		}
 	};
+	template<size_t dim, size_t MaxElements>
+	size_t OctreeNode<dim, MaxElements>::MAX_DEPTH;
 
-	template<size_t dim=2, size_t MaxElements=1>
+	template<size_t dim=2, size_t MaxElements=128>
 	class Octree : public BaseIndex {
 		using Point = point_t<dim>;
 		using Box = box_t<dim>;
@@ -460,6 +447,7 @@ namespace bench { namespace index {
 		
 		private:
 		size_t num_of_points;
+		size_t MAX_DEPTH;
 		OctreeNode_t *root;
 		Points& _data;
 		
@@ -478,7 +466,8 @@ namespace bench { namespace index {
 			auto start = std::chrono::steady_clock::now();
 
 			this->num_of_points = points.size();
-			root = new OctreeNode_t(points);
+			this->MAX_DEPTH = std::ceil(std::log2(this->num_of_points*1.0));
+			root = new OctreeNode<dim, MaxElements>(points, this->MAX_DEPTH);
 			
 			auto end = std::chrono::steady_clock::now();
 			build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -520,8 +509,8 @@ namespace bench { namespace index {
 			}
 			
 			auto end = std::chrono::steady_clock::now();
-			range_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-			range_count ++;
+			knn_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+			knn_count ++;
 			
 			return results;
 		}
@@ -535,18 +524,21 @@ namespace bench { namespace index {
 				cout << "[INSERT]: pid = " << pid << " ";
 				bench::common::print_point(point, true);
 				#endif
+				++this->num_of_points;
 			}
 		}
 		
 		bool erase(const Point& point) {
 			if (root != NULL) {
-				return root->erase(_data, point);
+				bool flag = root->erase(_data, point);
+				if (flag)
+					--this->num_of_points;
 			}
 			return false;
 		}
 		
 		inline size_t count() {
-			return this->num_of_boxes;
+			return this->num_of_points;
 		}
 
 		inline size_t index_size() {

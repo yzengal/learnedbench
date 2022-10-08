@@ -276,8 +276,8 @@ namespace bench { namespace index {
 					// Compute the min/max corners of this child octant
 					Point cmax = children[j]->origin, cmin = children[j]->origin;
 					for (int i=0; i<dim; ++i) {
-						cmax[i] += children[i]->halfDimension[i];
-						cmin[i] -= children[i]->halfDimension[i];
+						cmax[i] += children[j]->halfDimension[i];
+						cmin[i] -= children[j]->halfDimension[i];
 					}
 					
 					// If the query rectangle is outside the child's bounding box, 

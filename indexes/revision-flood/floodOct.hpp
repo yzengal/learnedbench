@@ -10,13 +10,14 @@
 #include <vector>
 #include <chrono>
 #include <random>
+#include <cmath>
 #include <unordered_set>
 
 #include "../base_index.hpp"
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
-#include "../rmi/models.hpp"
-#include "../rmi/rmi.hpp"
+#include "../pgm/pgm_index.hpp"
+#include "../pgm/pgm_index_variants.hpp"
 
 
 namespace bench { namespace index {
@@ -30,18 +31,18 @@ using Points = std::vector<Point>;
 using Range = std::pair<size_t, size_t>;
 using Box = box_t<Dim>;
 using Counts = std::vector<int>;
-using layer1_type = rmi::LinearSpline;
-using layer2_type = rmi::LinearRegression;
-using Index = rmi::RmiLAbs<double, layer1_type, layer2_type>;
+using Index =  pgm::PGMIndex<double, Eps>;
 	
 public:
+static int MAX_DEPTH;
 
 class OctreeNode {
     public:
-	using OctreeNodePoint = point_t<Dim-1>;
-	using OctreeNodeBox = box_t<Dim-1>;
-	using PairData_t = std::pair<Point, int>;
-	static const int CHILD_SIZE = ((size_t)1)<<(Dim-1);
+	static const int LOCAL_DIM = Dim-1;
+	using OctreeNodePoint = point_t<LOCAL_DIM>;
+	using OctreeNodeBox = box_t<LOCAL_DIM>;
+	using PairData_t = std::pair<point_t<Dim>, size_t>;
+	static const int CHILD_SIZE = ((size_t)1)<<LOCAL_DIM;
 	// Physical position/size. This implicitly defines the bounding 
 	// box of this node
 	OctreeNodePoint origin;         //! The physical center of this node
@@ -59,12 +60,12 @@ class OctreeNode {
 		size_t n = points.size();
 		size_t oid = rand() % n;
 		
-		for (int j=0; j<Dim-1; ++j)
+		for (int j=0; j<LOCAL_DIM; ++j)
 			origin[j] = points[oid][j];
 		
 		halfDimension.fill(0.0);
 		for (int i=0; i<n; ++i) {
-			for (int j=0; j<Dim-1; ++j) {
+			for (int j=0; j<LOCAL_DIM; ++j) {
 				auto delta = fabs(origin[j] - points[i][j]);
 				if (delta > halfDimension[j])
 					halfDimension[j] = delta;
@@ -88,8 +89,6 @@ class OctreeNode {
 		_local_data.clear();
 		for(int i=0; i<CHILD_SIZE; ++i) 
 			children[i] = NULL;
-		if (this->_local_pgm != NULL)
-			delete this->_local_pgm;
 		this->_local_pgm = NULL;
 	}
 
@@ -105,9 +104,9 @@ class OctreeNode {
     }
 	
 	inline size_t index_size() {
-		size_t ret = sizeof(OctreeNode*)*CHILD_SIZE + sizeof(double)*(Dim-1)*2;
+		size_t ret = sizeof(OctreeNode*)*CHILD_SIZE + sizeof(double)*LOCAL_DIM*2;
 		
-		ret += sizeof(Point*) + sizeof(size_t) + sizeof(double)*Dim*_local_data.size();
+		// ret += sizeof(Point*) + sizeof(size_t) + sizeof(double)*Dim*_local_data.size();
 		ret += sizeof(int*) + sizeof(size_t) + sizeof(int)*_local_data.size();
 		for(int i=0; i<CHILD_SIZE; ++i) {
 			if (children[i] != NULL)
@@ -123,7 +122,7 @@ class OctreeNode {
 	// Determine which octant of the tree would contain 'point'
 	int getOctantContainingPoint(const Point& point) const {
 		int oct = 0;
-		for (int i=0; i<Dim-1; ++i) {
+		for (int i=0; i<LOCAL_DIM; ++i) {
 			if (point[i] >= origin[i])
 				oct |= (1 << i);
 		}
@@ -134,7 +133,7 @@ class OctreeNode {
 		return children[0] == NULL;
 	}
 	
-	void insert(const Point& point, int num=1) {
+	void insert(const Point& point, int num=1, int dep=0) {
 		
 		// If this node doesn't have a data point yet assigned 
 		// and it is a leaf, then we're done!
@@ -148,7 +147,7 @@ class OctreeNode {
 					return ;
 				}		
 			}
-			if(_local_data.size() < MaxElements) {
+			if(dep>=MAX_DEPTH || _local_data.size()<MaxElements) {
 				_local_data.emplace_back(make_pair(point, num));
 			} else {
 				// We're at a leaf, but there's already something here
@@ -161,12 +160,12 @@ class OctreeNode {
 				// Split the current node and create new empty trees for each
 				// child octant.
 				OctreeNodePoint newHalfDimension = halfDimension;
-				for (int i=0; i<Dim-1; ++i)
+				for (int i=0; i<LOCAL_DIM; ++i)
 					newHalfDimension[i] *= .5f;
 				for(int j=0; j<CHILD_SIZE; ++j) {
 					// Compute new bounding box for this child
 					OctreeNodePoint newOrigin = origin;
-					for (int i=0; i<Dim-1; ++i) {
+					for (int i=0; i<LOCAL_DIM; ++i) {
 						newOrigin[i] += halfDimension[i] * ((j&(1<<i)) ? .5f : -.5f);
 					}						
 					children[j] = new OctreeNode(newOrigin, newHalfDimension);
@@ -178,16 +177,16 @@ class OctreeNode {
 				for (int i=0; i<_local_data.size(); ++i) {
 					const Point& oldPoint = _local_data[i].first;
 					const int oldNum = _local_data[i].second;
-					children[getOctantContainingPoint(oldPoint)]->insert(oldPoint, oldNum);
+					children[getOctantContainingPoint(oldPoint)]->insert(oldPoint, oldNum, dep+1);
 				}
 				_local_data.clear();
-				children[getOctantContainingPoint(point)]->insert(point, num);
+				children[getOctantContainingPoint(point)]->insert(point, num, dep+1);
 			}
 		} else {
 			// We are at an interior node. Insert recursively into the 
 			// appropriate child octant
 			int octant = getOctantContainingPoint(point);
-			children[octant]->insert(point, num);
+			children[octant]->insert(point, num, dep+1);
 		}
 	}
 
@@ -213,13 +212,13 @@ class OctreeNode {
 		for (const auto& p : _local_data) {
 			idx_data.emplace_back(std::get<SortDim>(p.first));
 		}
-
-		// _local_pgm = new pgm::PGMIndex<double, 16>(idx_data);
-		// train 1-D learned index on projections
-		std::size_t index_budget = idx_data.size() * sizeof(double);
-		std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
-		if (layer2_size < 8) layer2_size = 8;
-		this->_local_pgm = new Index(idx_data, layer2_size);		
+		std::sort(idx_data.begin(), idx_data.end());
+		
+		try {
+			_local_pgm = new Index(idx_data);		
+		} catch (...) {
+			_local_pgm = NULL;
+		}
     }
 
     void range_query(const Box& box, const OctreeNodeBox& boxProject, Points& results) {
@@ -229,7 +228,7 @@ class OctreeNode {
 				
 				// Compute the min/max corners of this child octant
 				OctreeNodePoint cmax = children[j]->origin, cmin = children[j]->origin;
-				for (int i=0; i<Dim-1; ++i) {
+				for (int i=0; i<LOCAL_DIM; ++i) {
 					cmax[i] += children[j]->halfDimension[i];
 					cmin[i] -= children[j]->halfDimension[i];
 				}
@@ -237,7 +236,7 @@ class OctreeNode {
 				// If the query rectangle is outside the child's bounding box, 
 				// then continue
 				OctreeNodeBox cbox(cmin, cmax);
-				if (!bench::common::is_intersect_box<Dim-1>(cbox, boxProject)) continue;
+				if (!bench::common::is_intersect_box<LOCAL_DIM>(cbox, boxProject)) continue;
 				
 				children[j]->range_query(box, boxProject, results);
 			} 
@@ -272,7 +271,9 @@ FloodOct(Points& points) {
     auto start = std::chrono::steady_clock::now();
 	
 	this->num_of_points = points.size();
+	MAX_DEPTH = std::ceil(std::log2(this->num_of_points*1.0));
     root = new OctreeNode(points);
+	root->DFS_build();
 
     auto end = std::chrono::steady_clock::now();
     build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -322,5 +323,8 @@ OctreeNode *root;
 std::size_t num_of_points;
 
 };
+
+template<size_t Dim, size_t MaxElements, size_t Eps, size_t SortDim>
+int FloodOct<Dim, MaxElements, Eps, SortDim>::MAX_DEPTH = 20;
 }
 }

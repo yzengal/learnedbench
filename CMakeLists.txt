@@ -114,17 +114,17 @@ elseif(TESTRMI)
 
   include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS} ${RSMI_PATH} ${ANN_PATH})
 
-    add_executable(bench2drmi_fs bench/bench_rmi.cpp)
-    target_link_libraries(bench2drmi_fs ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
-    target_compile_definitions(bench2drmi_fs PUBLIC PARTITION_NUM=60)
+    # add_executable(bench2drmi_fs bench/bench_rmi.cpp)
+    # target_link_libraries(bench2drmi_fs ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    # target_compile_definitions(bench2drmi_fs PUBLIC PARTITION_NUM=60)
 	
-	add_executable(bench2drmi_osm bench/bench_rmi.cpp)
-    target_link_libraries(bench2drmi_osm ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
-    target_compile_definitions(bench2drmi_osm PUBLIC PARTITION_NUM=250)
+	# add_executable(bench2drmi_osm bench/bench_rmi.cpp)
+    # target_link_libraries(bench2drmi_osm ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    # target_compile_definitions(bench2drmi_osm PUBLIC PARTITION_NUM=250)
 
-    add_executable(bench3drmi_toronto bench/bench_rmi.cpp)
-    target_link_libraries(bench3drmi_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
-    target_compile_definitions(bench3drmi_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+    # add_executable(bench3drmi_toronto bench/bench_rmi.cpp)
+    # target_link_libraries(bench3drmi_toronto ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
+    # target_compile_definitions(bench3drmi_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
 	
 	add_executable(bench2drmi_default bench/bench_rmi.cpp)
     target_link_libraries(bench2drmi_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
@@ -141,6 +141,81 @@ elseif(TESTRMI)
     add_executable(bench8drmi_default bench/bench_rmi.cpp)
     target_link_libraries(bench8drmi_default ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread "${ANN_PATH}/lib/libANN.a" -ltcmalloc -lsnappy)
     target_compile_definitions(bench8drmi_default PUBLIC BENCH_DIM=8 PARTITION_NUM=4)
+	
+elseif(TESTFLOOD)
+
+  # the other benchmarks are compiled using cxx17 (required by PGM-Index)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+  # ANN library path
+  include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS})
+
+    add_executable(bench2dflood_fs bench/bench_flood.cpp)
+    target_link_libraries(bench2dflood_fs ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2dflood_fs PUBLIC PARTITION_NUM=60)
+	
+	add_executable(bench2dflood_osm bench/bench_flood.cpp)
+    target_link_libraries(bench2dflood_osm ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2dflood_osm PUBLIC PARTITION_NUM=250)
+
+    add_executable(bench3dflood_toronto bench/bench_flood.cpp)
+    target_link_libraries(bench3dflood_toronto ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench3dflood_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+	
+	add_executable(bench2dflood_default bench/bench_flood.cpp)
+    target_link_libraries(bench2dflood_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2dflood_default PUBLIC PARTITION_NUM=100)
+	
+	add_executable(bench4dflood_default bench/bench_flood.cpp)
+    target_link_libraries(bench4dflood_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench4dflood_default PUBLIC BENCH_DIM=4 PARTITION_NUM=10)
+
+    add_executable(bench6dflood_default bench/bench_flood.cpp)
+    target_link_libraries(bench6dflood_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench6dflood_default PUBLIC BENCH_DIM=6 PARTITION_NUM=5)
+
+    add_executable(bench8dflood_default bench/bench_flood.cpp)
+    target_link_libraries(bench8dflood_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench8dflood_default PUBLIC BENCH_DIM=8 PARTITION_NUM=4)
+
+elseif(TESTOCTREE)
+
+  # the other benchmarks are compiled using cxx17 (required by PGM-Index)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+  # ANN library path
+  include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS})
+
+    add_executable(bench2doctree_fs bench/bench_octree.cpp)
+    target_link_libraries(bench2doctree_fs ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2doctree_fs PUBLIC PARTITION_NUM=60)
+	
+	add_executable(bench2doctree_osm bench/bench_octree.cpp)
+    target_link_libraries(bench2doctree_osm ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2doctree_osm PUBLIC PARTITION_NUM=250)
+
+    add_executable(bench3doctree_toronto bench/bench_octree.cpp)
+    target_link_libraries(bench3doctree_toronto ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench3doctree_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+	
+	add_executable(bench2doctree_default bench/bench_octree.cpp)
+    target_link_libraries(bench2doctree_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench2doctree_default PUBLIC PARTITION_NUM=100)
+	
+	add_executable(bench4doctree_default bench/bench_octree.cpp)
+    target_link_libraries(bench4doctree_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench4doctree_default PUBLIC BENCH_DIM=4 PARTITION_NUM=10)
+
+    add_executable(bench6doctree_default bench/bench_octree.cpp)
+    target_link_libraries(bench6doctree_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench6doctree_default PUBLIC BENCH_DIM=6 PARTITION_NUM=5)
+
+    add_executable(bench8doctree_default bench/bench_octree.cpp)
+    target_link_libraries(bench8doctree_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    target_compile_definitions(bench8doctree_default PUBLIC BENCH_DIM=8 PARTITION_NUM=4)
+		
 else()
 
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)

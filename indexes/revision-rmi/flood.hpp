@@ -90,6 +90,7 @@ Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
     std::cout << "Construct Flood " << "K=" << K << " Epsilon=" << Eps << " SortDim=" << SortDim << std::endl;
 
     auto start = std::chrono::steady_clock::now();
+	const double TOTAL_BUDGET = 152.92 * points.size() * Dim / (2*20000000.0);
 
     // dimension offsets when computing bucket ID
     for (size_t i=0; i<Dim-1; ++i) {
@@ -117,7 +118,7 @@ Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
         }
 
         std::sort(idx_data.begin(), idx_data.end());
-		std::size_t index_budget = std::min((size_t)28.36*1024*1024/(Dim-1), points.size()*sizeof(double));
+		std::size_t index_budget = std::min((size_t)(TOTAL_BUDGET*0.5*1024*1024/(Dim-1)), points.size()*sizeof(double));
 		std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
 		if (layer2_size < 8) layer2_size = 8;
         this->indexes[i] = new Index(idx_data, layer2_size);
@@ -131,7 +132,7 @@ Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
         buckets[compute_id(p)].insert(p);
     }
 
-	std::size_t index_budget = std::min((size_t)28.36*1024*1024/buckets.size(), points.size()*sizeof(double));
+	std::size_t index_budget = std::min((size_t)(TOTAL_BUDGET*0.5*1024*1024/buckets.size()), points.size()*sizeof(double));
     for (auto& b : buckets) {
         b.build(index_budget);
     }
