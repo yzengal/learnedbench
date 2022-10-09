@@ -5,7 +5,7 @@
 #include <chrono>
 #include <queue>
 
-#include "../base_index.hpp"
+#include "base_index.hpp"
 #include "../rsmi/Constants.h"
 #include "../rsmi/RSMI.h"
 #include "../rsmi/Point.h"
@@ -122,13 +122,35 @@ BenchPoints knn_query(BenchPoint& point, size_t k) {
     return results;
 }
 
-void insert(const Point& point) {
+void __insert(const Point& point) {
 	this->_rsmi->insert(*_exp_recorder, point);
 }
 
 		
-bool erase(const Point& point) {
+bool __erase(const Point& point) {
 	this->_rsmi->remove(*_exp_recorder, point);
+}
+
+void insert(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	__insert(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    insert_count ++;
+    insert_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+}
+
+bool erase(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	bool ret = __erase(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    erase_count ++;
+    erase_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+	
+	return ret;
 }
 
 

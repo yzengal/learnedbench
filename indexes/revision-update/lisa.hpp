@@ -8,26 +8,23 @@
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
 #include "base_index.hpp"
-#include "../rmi/models.hpp"
-#include "../rmi/rmi.hpp"
+#include "../pgm/pgm_index.hpp"
 
 namespace bench { namespace index {
 
 template<size_t Dim, size_t K=10, size_t Epsilon=64>
-class LISA2 : public BaseIndex {
+class LISA : public BaseIndex {
 
 using Point = point_t<Dim>;
 using Box = box_t<Dim>;
 using Points = std::vector<Point>;
 using Partition = std::array<double, K>;
 using Partitions = std::array<Partition, Dim>;
-using layer1_type = rmi::LinearSpline;
-using layer2_type = rmi::LinearRegression;
-using RMI_t = rmi::RmiLAbs<double, layer1_type, layer2_type>;
+using PGMIdx = pgm::PGMIndex<double, Epsilon>;
 	
 public:
 
-LISA2(Points& points) {
+LISA(Points& points) {
     std::cout << "Construct LISA " << "K=" << K << " Epsilon=" << Epsilon << std::endl;
 
     auto start = std::chrono::steady_clock::now();
@@ -113,22 +110,19 @@ LISA2(Points& points) {
     }
 
 	// make sure there is no duplicate keys
-    // for (size_t sz=projections.size()-1,i=0; i<sz; ) {
-		// size_t j = i++;
-		// while (i<sz && projections[i]==projections[j]) ++i;
-		// if (i - j > 1) {
-			// double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
-			// delta /= (i - j);
-			// for (size_t k=j; k<i; ++k) 
-				// projections[k] += delta * (k-j);
-		// }
-    // }
+    for (size_t sz=projections.size()-1,i=0; i<sz; ) {
+		size_t j = i++;
+		while (i<sz && projections[i]==projections[j]) ++i;
+		if (i - j > 1) {
+			double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
+			delta /= (i - j);
+			for (size_t k=j; k<i; ++k) 
+				projections[k] += delta * (k-j);
+		}
+    }
     
 	// train 1-D learned index on projections
-	const double TOTAL_BUDGET = 153.12 * points.size() * Dim / (2*20000000.0);
-	std::size_t index_budget = std::min((size_t)(TOTAL_BUDGET*1024*1024), points.size()*sizeof(double));
-	std::size_t layer2_size = (index_budget - 2 * sizeof(double) - 2 * sizeof(std::size_t)) / (2 * sizeof(double));
-    this->_rmi = new RMI_t(projections, layer2_size);
+	this->_pgm_ptr = new PGMIdx(projections);
 
     auto end = std::chrono::steady_clock::now();
     build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -136,14 +130,14 @@ LISA2(Points& points) {
     std::cout << "Index Size: " << index_size() << " Bytes" << std::endl;
 }
 
-~LISA2() {
-    delete this->_rmi;
+~LISA() {
+    delete this->_pgm_ptr;
 }
 
 void __insert(const Point& point) {
 	auto pid = compute_id(point);
 	
-	auto range = this->_rmi->search(pid);
+	auto range = this->_pgm_ptr->search(pid);
 	size_t mid = (range.lo + range.hi) / 2;
 	
 	if (mid >= this->_data.size()) mid = range.lo;
@@ -152,7 +146,7 @@ void __insert(const Point& point) {
 
 bool __erase(const Point& point) {
 	auto pid = compute_id(point);
-	auto range = this->_rmi->search(pid);
+	auto range = this->_pgm_ptr->search(pid);
 
     for (size_t i=range.lo; i<=range.hi&&i<this->_data.size(); ++i) {
 		if (this->_data[i].empty()) continue;
@@ -200,7 +194,7 @@ inline size_t count() {
 inline size_t index_size() {
     size_t partition_size = K * Dim * sizeof(double);
     size_t volume_size = this->volumes.size() * sizeof(double);
-    size_t rmi_size = this->_rmi->size_in_bytes();
+    size_t rmi_size = this->_pgm_ptr->size_in_bytes();
     return partition_size + volume_size + rmi_size + count() * sizeof(size_t);
 }
 
@@ -284,7 +278,7 @@ std::array<double, bench::common::ipow(K, Dim)> volumes;
 std::vector<Points>  _data;
 
 // ptr to the underlying 1-d learned index
-RMI_t* _rmi; 
+PGMIdx* _pgm_ptr; 
 
 // find intitial search range
 inline double initial_knn_range(Point& q, size_t k) {
@@ -324,8 +318,8 @@ void knn_range_helper(Points& result_found, Point& q, double r) {
 
 // lo and hi are projected values
 inline void search_range(Points& result, double lo, double hi, Box& qbox, std::unordered_set<unsigned long long>& visit) {
-    auto range_lo = this->_rmi->search(lo);
-    auto range_hi = this->_rmi->search(hi);
+    auto range_lo = this->_pgm_ptr->search(lo);
+    auto range_hi = this->_pgm_ptr->search(hi);
 
     for (size_t i=range_lo.lo; i<=range_hi.hi&&i<this->_data.size(); ++i) {
 		for (size_t j=0; j<this->_data[i].size(); ++j) {		

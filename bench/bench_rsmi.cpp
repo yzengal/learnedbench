@@ -16,7 +16,7 @@ using Point = point_t<BENCH_DIM>;
 using Box = box_t<BENCH_DIM>;
 using Points = std::vector<point_t<BENCH_DIM>>;
 
-const std::string MODEL_PATH = "/home/qiyu/learnedbench/model_path/";
+const std::string MODEL_PATH = "/data/yuxiang/model_path/";
 
 // extract filename from a path
 std::string get_filename(const std::string& path) {

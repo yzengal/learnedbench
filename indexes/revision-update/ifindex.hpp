@@ -11,7 +11,7 @@
 #include <boost/math/statistics/linear_regression.hpp>
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
-#include "../base_index.hpp"
+#include "base_index.hpp"
 
 // #define LOCAL_DEBUG
 
@@ -186,7 +186,7 @@ IFIndex(Points& points) : _points(points) {
     delete this->_rt;
 }
 
-void insert(Point& point) {
+void __insert(Point& point) {
 	for (auto it=_rt->qbegin(bgi::contains(point)); it!=_rt->qend(); ++it) {
 		if (std::get<1>(*it)._ids.size() < LeafNodeCap) {
 			std::vector<size_t> temp_ids = std::get<1>(*it)._ids;
@@ -239,7 +239,7 @@ void insert(Point& point) {
 	_rt->insert(idx_data);
 }
 
-bool erase(Point& point) {
+bool __erase(Point& point) {
 	bool erased = false;
 	
     for (auto it=_rt->qbegin(bgi::contains(point)); it!=_rt->qend(); ++it) {
@@ -266,6 +266,28 @@ bool erase(Point& point) {
 	return erased;
 }
 
+void insert(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	__insert(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    insert_count ++;
+    insert_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+}
+
+bool erase(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	bool ret = __erase(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    erase_count ++;
+    erase_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+	
+	return ret;
+}
+
 inline size_t count() {
     return this->_points.size();
 }
@@ -275,6 +297,8 @@ inline size_t index_size() {
     auto rt_size = bench::common::get_boost_rtree_statistics(*(this->_rt));
     return rt_size + count() * sizeof(size_t) + mem_manager.size() * sizeof(size_t);
 }
+
+Points knn_query(Point& point, size_t k) { return Points(); }
 
 Points range_query(Box& box) {
     auto start = std::chrono::steady_clock::now();
@@ -342,7 +366,7 @@ inline size_t predict(const LeafNode& leaf, double val) {
 }
 
 inline std::pair<size_t, size_t> search_leaf(const LeafNode& leaf, Box& box) {
-	if (leaf.lr_error) return make_pair(0,leaf._ids.size()-1);
+	if (leaf.lr_error) return std::make_pair(0,leaf._ids.size()-1);
 	
     size_t pred_min = predict(leaf, box.min_corner()[sort_dim]);
     size_t pred_max = predict(leaf, box.max_corner()[sort_dim]);

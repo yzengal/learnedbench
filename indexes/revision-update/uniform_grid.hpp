@@ -2,7 +2,7 @@
 
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
-#include "../base_index.hpp"
+#include "base_index.hpp"
 
 #include <algorithm>
 #include <array>
@@ -71,7 +71,8 @@ public:
         std::cout << "Build Time: " << get_build_time() << " [ms]" << std::endl;
         std::cout << "Index Size: " << index_size() << " Bytes" << std::endl;
     }
-
+	
+	Points knn_query(Point& point, size_t k) { return Points(); }
 
     Points range_query(Box& box) {
         auto start = std::chrono::steady_clock::now();
@@ -131,22 +132,37 @@ public:
     }
 	
 	void insert(const Point& point) {
+		auto start = std::chrono::steady_clock::now();
+	 
 		buckets[compute_id(point)].emplace_back(point);
+		
+		auto end = std::chrono::steady_clock::now();
+		insert_count ++;
+		insert_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	}
 
 			
 	bool erase(const Point& point) {
+		auto start = std::chrono::steady_clock::now();
+		
 		size_t bucketID = compute_id(point);
+		bool ret = false;
 		
 		for (size_t i=0; i<buckets[bucketID].size(); ++i) {
 			if (bench::common::is_equal_point<dim>(buckets[bucketID][i], point)) {
 				buckets[bucketID][i] = *buckets[bucketID].rbegin();
 				buckets[bucketID].pop_back();
-				return true;
+				ret = true;
+				break;
 			}
 		}
 		
-		return false;
+		auto end = std::chrono::steady_clock::now();
+		erase_count ++;
+		erase_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+	
+		
+		return ret;
 	}
 
 

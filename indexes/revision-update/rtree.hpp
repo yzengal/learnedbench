@@ -2,7 +2,7 @@
 
 #include "../../utils/type.hpp"
 #include "../../utils/common.hpp"
-#include "../base_index.hpp"
+#include "base_index.hpp"
 
 #include <boost/geometry/index/parameters.hpp>
 #include <boost/geometry/index/predicates.hpp>
@@ -75,13 +75,35 @@ inline size_t index_size() {
     return bench::common::get_boost_rtree_statistics(*rtree);
 }
 
-void insert(const Point& point) {
+void __insert(const Point& point) {
 	rtree->insert(point);
 }
 
-bool erase(const Point& point) {
+bool __erase(const Point& point) {
 	rtree->remove(point);
 	return true;
+}
+
+void insert(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	__insert(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    insert_count ++;
+    insert_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+}
+
+bool erase(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	bool ret = __erase(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    erase_count ++;
+    erase_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+	
+	return ret;
 }
 
 private:
@@ -148,13 +170,35 @@ inline size_t index_size() {
     return bench::common::get_boost_rtree_statistics(*rtree);
 }
 
-void insert(const Point& point) {
+void __insert(const Point& point) {
 	rtree->insert(point);
 }
 
-bool erase(const Point& point) {
+bool __erase(const Point& point) {
 	rtree->remove(point);
 	return true;
+}
+
+void insert(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	__insert(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    insert_count ++;
+    insert_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+}
+
+bool erase(Point& point) {
+	auto start = std::chrono::steady_clock::now();
+	
+	bool ret = __erase(point);
+	
+	auto end = std::chrono::steady_clock::now();
+    erase_count ++;
+    erase_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+	
+	return ret;
 }
 
 private:

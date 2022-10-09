@@ -80,6 +80,25 @@ elseif(TESTBOX)
   target_link_libraries(bench2d_box ${TPIE_LIBRARIES} Boost::program_options pthread -lsnappy)
   target_compile_definitions(bench2d_box PUBLIC PARTITION_NUM=100)
   
+elseif(TESTUPDATE)
+
+  # the other benchmarks are compiled using cxx17 (required by PGM-Index)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS})
+  
+  add_executable(bench2dupdate_fs bench/bench_update.cpp)
+  target_link_libraries(bench2dupdate_fs ${TPIE_LIBRARIES} Boost::program_options pthread -ltcmalloc -lsnappy)
+  target_compile_definitions(bench2dupdate_fs PUBLIC PARTITION_NUM=60)
+  
+  add_executable(bench2dupdate_osm bench/bench_update.cpp)
+  target_link_libraries(bench2dupdate_osm ${TPIE_LIBRARIES} Boost::program_options pthread -ltcmalloc -lsnappy)
+  target_compile_definitions(bench2dupdate_osm PUBLIC PARTITION_NUM=250)
+
+  add_executable(bench3dupdate_toronto bench/bench_update.cpp)
+  target_link_libraries(bench3dupdate_toronto ${TPIE_LIBRARIES} Boost::program_options pthread -ltcmalloc -lsnappy)
+  target_compile_definitions(bench3dupdate_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+  
 elseif(TESTJOIN)
 
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)
