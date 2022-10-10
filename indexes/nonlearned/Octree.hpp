@@ -9,8 +9,6 @@
 #include "../../utils/common.hpp"
 #include "../base_index.hpp"
 
-// #define LOCAL_DEBUG
-
 namespace bench { namespace index {
 
 	/**!
@@ -52,7 +50,7 @@ namespace bench { namespace index {
 		public:
 		OctreeNode(const Points& points, size_t _MAX_DEPTH) {
 			this->MAX_DEPTH = _MAX_DEPTH;
-			int n = points.size();
+			size_t n = points.size();
 			int oid = rand() % n;
 			origin = points[oid];
 			
@@ -65,22 +63,14 @@ namespace bench { namespace index {
 				}
 			}
 			
-			#ifdef LOCAL_DEBUG
-			cout << "origin: ";
-			bench::common::print_point<dim>(origin, true);
-			cout << "halfDimension: ";
-			bench::common::print_point<dim>(halfDimension, true);
-			#endif
-			
 			// Initially, there are no children
 			cnts.clear();
 			ids.clear();
 			for(int i=0; i<CHILD_SIZE; ++i) 
 				children[i] = NULL;
 			
-			int idx = 0;
-			for (auto point : points) {
-				insert(points, idx++, 1);
+			for (size_t idx=0; idx<n; ++idx) {
+				insert(points, idx, 1);
 			}
 		}
 		
@@ -142,35 +132,18 @@ namespace bench { namespace index {
 			
 			const Point& point = points[pid];
 			
-			#ifdef LOCAL_DEBUG
-			for (int i=0; i<dep; ++i) std::cout << " ";
-			bench::common::print_point<dim>(point, false);
-			std::cout << " ";
-			bench::common::print_point<dim>(origin, false);
-			std::cout << " ";
-			bench::common::print_point<dim>(halfDimension, false);
-			std::cout << " " << (isLeafNode() ? "Leaf" : "Non-Leaf") << " " << ids.size() << endl;	
-			#endif		
-			
 			// If this node doesn't have a data point yet assigned 
 			// and it is a leaf, then we're done!
 			if(isLeafNode()) {
 				// assert(ids.size() == cnts.size());
 				
-				// check if the new point equals to any current point
-				for (int i=0; i<ids.size(); ++i) {
-					const Point& oldPoint = points[ids[i]];
-					if (bench::common::is_equal_point<dim>(oldPoint, point)) {
-						cnts[i] += num;
-						#ifdef LOCAL_DEBUG
-						for (int i=0; i<dep; ++i) std::cout << " ";
-						bench::common::print_point<dim>(oldPoint, false);
-						std::cout << " ";
-						std::cout << cnts[i] << endl;
-						#endif	
-						return ;
-					}		
-				}
+				// for (int i=0; i<ids.size(); ++i) {
+					// const Point& oldPoint = points[ids[i]];
+					// if (bench::common::is_equal_point<dim>(oldPoint, point)) {
+						// cnts[i] += num;
+						// return ;
+					// }		
+				// }
 				if(dep>=MAX_DEPTH || ids.size()<MaxElements) {
 					cnts.emplace_back(num);
 					ids.emplace_back(pid);
@@ -215,45 +188,24 @@ namespace bench { namespace index {
 			}
 		}
 		
-		bool erase(const Points& points, const Point& point) {
-			#ifdef LOCAL_DEBUG
-			std::cout << "[DELETE]: ";
-			bench::common::print_point<dim>(point, true);
-			#endif
+		bool erase(const Points& points, const int pid) {
 			bool success = false;
-			__erase(points, point, success);
-			#ifdef LOCAL_DEBUG
-			std::cout << "\t\t\t" << (success ? "True":"False") << endl;
-			#endif
+			__erase(points, pid, success);
 			return success;
 		}
 		
-		int __erase(const Points& points, const Point& point, bool& success) {
-			#ifdef LOCAL_DEBUG
-			bench::common::print_point<dim>(point, false);
-			std::cout << " ";
-			bench::common::print_point<dim>(origin, false);
-			std::cout << " ";
-			bench::common::print_point<dim>(halfDimension, false);
-			std::cout << " " << (isLeafNode() ? "Leaf" : "Non-Leaf") << " " << ids.size() << endl;	
-			#endif
+		int __erase(const Points& points, const int pid, bool& success) {
+			const Point& point = points[pid];
+			
 			// If this node doesn't have a data point yet assigned 
 			// and it is a leaf, then we're done!
 			if(isLeafNode()) {
 				
-				#ifdef LOCAL_DEBUG
-				std::cout << "\t" << "ids.size() = " << ids.size() << " ";
-				for (auto id : ids) {
-					bench::common::print_point<dim>(points[id], false);
-					std::cout << " ";
-				}
-				std::cout << endl;
-				#endif
-				
 				int erased = 0;
 				
 				for (int i=0; i<ids.size(); ++i) {
-					if (bench::common::is_equal_point<dim>(points[ids[i]], point)) {
+					// if (bench::common::is_equal_point<dim>(points[ids[i]], point)) {
+					if (ids[i] == pid) {
 						--cnts[i];
 						if (cnts[i] == 0) {
 							cnts[i] = *cnts.rbegin();
@@ -263,14 +215,8 @@ namespace bench { namespace index {
 							erased = 1;	
 						}
 						success = true;
-						#ifdef LOCAL_DEBUG
-						std::cout << "\t\terased = " << erased << " cnts[i] = " << cnts[i] << endl;
-						#endif
 						break;
 					}
-					#ifdef LOCAL_DEBUG
-					std::cout << "\t\t\t" << (erased ? "erased":"non-erased") << endl;
-					#endif
 				}
 				
 				return erased;
@@ -279,7 +225,7 @@ namespace bench { namespace index {
 				// We are at an interior node. Insert recursively into the 
 				// appropriate child octant
 				int octant = getOctantContainingPoint(point);
-				int erased = children[octant]->__erase(points, point, success);
+				int erased = children[octant]->__erase(points, pid, success);
 				
 				if (0 == erased) return erased;
 				
@@ -294,6 +240,8 @@ namespace bench { namespace index {
 				// delete all child nodes and merge the child's data into parent node
 				if (dataSize > MaxElements) return 0;
 				
+				ids.clear();
+				cnts.clear();
 				for (int j=0; j<CHILD_SIZE; ++j) {
 					if (!children[j]->ids.empty()) {
 						ids.insert(ids.end(), children[j]->ids.begin(), children[j]->ids.end());
@@ -466,7 +414,7 @@ namespace bench { namespace index {
 			auto start = std::chrono::steady_clock::now();
 
 			this->num_of_points = points.size();
-			this->MAX_DEPTH = std::ceil(std::log2(this->num_of_points*1.0));
+			this->MAX_DEPTH = std::ceil(std::log2(points.size()*1.0));
 			root = new OctreeNode<dim, MaxElements>(points, this->MAX_DEPTH);
 			
 			auto end = std::chrono::steady_clock::now();
@@ -486,8 +434,10 @@ namespace bench { namespace index {
 			if (root != NULL) {
 				std::vector<PointID_t> ids = root->range_query(_data, box);
 				results.reserve(ids.size());
-				for (auto id : ids)
+				for (auto id : ids) {
+					assert(id < _data.size());
 					results.emplace_back(_data[id]);
+				}
 			}
 			
 			auto end = std::chrono::steady_clock::now();
@@ -504,8 +454,10 @@ namespace bench { namespace index {
 			if (root != NULL) {
 				std::vector<PointID_t> ids = root->knn_query(_data, q, k);
 				results.reserve(ids.size());
-				for (auto id : ids)
+				for (auto id : ids) {
+					assert(id < _data.size());
 					results.emplace_back(_data[id]);
+				}
 			}
 			
 			auto end = std::chrono::steady_clock::now();
@@ -513,28 +465,6 @@ namespace bench { namespace index {
 			knn_count ++;
 			
 			return results;
-		}
-		
-		void insert(const Point& point) {
-			if (root != NULL) {
-				int pid = _data.size();
-				_data.emplace_back(point);
-				root->insert(_data, pid, 1);
-				#ifdef LOCAL_DEBUG
-				cout << "[INSERT]: pid = " << pid << " ";
-				bench::common::print_point(point, true);
-				#endif
-				++this->num_of_points;
-			}
-		}
-		
-		bool erase(const Point& point) {
-			if (root != NULL) {
-				bool flag = root->erase(_data, point);
-				if (flag)
-					--this->num_of_points;
-			}
-			return false;
 		}
 		
 		inline size_t count() {

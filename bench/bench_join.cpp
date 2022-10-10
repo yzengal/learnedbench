@@ -32,7 +32,7 @@ using RStarTree = bench::index::RStarTree<BENCH_DIM>;
 using KDTree = bench::index::KDTree<BENCH_DIM>;
 using ANNKDTree = bench::index::ANNKDTree<BENCH_DIM>;
 using QDTree = bench::index::QDTree<BENCH_DIM>;
-using OCTree = bench::index::Octree<BENCH_DIM>;
+using OCTree = bench::index::Octree<BENCH_DIM,128>;
 
 // grid indices
 using UG = bench::index::UG<BENCH_DIM, PARTITION_NUM>;

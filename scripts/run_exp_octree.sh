@@ -25,12 +25,12 @@ MILLION=1000000
     # ${BENCH2D_FS} ${index} "${REAL_DATA_PATH}$data" 3680126 "all" > "${RESULT_PATH}${index}_${data}"
 # done
 
-# data="toronto"
-# for index in "octree"
-# do
-    # echo "Benchmark ${index} dataset ${data}"
-    # ${BENCH3D_TOR} ${index} "${REAL_DATA_PATH}$data" 21567172 "all" > "${RESULT_PATH}${index}_${data}"
-# done
+data="toronto"
+for index in "octree"
+do
+    echo "Benchmark ${index} dataset ${data}"
+    ${BENCH3D_TOR} ${index} "${REAL_DATA_PATH}$data" 21567172 "all" > "${RESULT_PATH}${index}_${data}"
+done
 
 # data="osm-china"
 # for index in "octree"

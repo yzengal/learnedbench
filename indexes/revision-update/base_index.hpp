@@ -38,6 +38,14 @@ inline double get_knn_time() {
     return knn_time;
 }
 
+inline double get_erase_time() {
+    return erase_time;
+}
+
+inline double get_insert_time() {
+    return insert_time;
+}
+
 inline size_t get_erase_count() {
     return erase_count;
 }

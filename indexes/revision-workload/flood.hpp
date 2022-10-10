@@ -10,6 +10,7 @@
 #include <vector>
 #include <chrono>
 #include <random>
+#include <cassert>
 
 #include "../base_index.hpp"
 #include "../../utils/type.hpp"
@@ -21,17 +22,17 @@
 namespace bench { namespace index {
 
 // the sort dimension is always the last dimension
-template<size_t Dim, size_t K, size_t Eps=64, size_t SortDim=Dim-1>
+template<size_t Dim, size_t K, size_t Eps=64>
 class Flood : public BaseIndex {
 
 using Point = point_t<Dim>;
 using Points = std::vector<Point>;
 using Range = std::pair<size_t, size_t>;
 using Box = box_t<Dim>;
-
 using Index = pgm::PGMIndex<double, Eps>;
 
 public:
+static size_t SortDim;
 
 class Bucket {
     public:
@@ -39,7 +40,7 @@ class Bucket {
     // eps for each bucket is fixed to 16 based on a micro benchmark
     pgm::PGMIndex<double, 16>* _local_pgm;
 
-    Bucket() : _local_pgm(nullptr) {} ;
+    Bucket() : _local_pgm(nullptr) {}
 
     ~Bucket() {
         delete this->_local_pgm;
@@ -57,7 +58,7 @@ class Bucket {
         std::vector<double> idx_data;
         idx_data.reserve(_local_points.size());
         for (const auto& p : _local_points) {
-            idx_data.emplace_back(std::get<SortDim>(p));
+            idx_data.emplace_back(p[SortDim]);
         }
 		
 		for (size_t sz=idx_data.size()-1,i=0; i<sz; ) {
@@ -70,12 +71,17 @@ class Bucket {
 					idx_data[k] += delta * (k-j);
 			}
 		}
-		std::sort(idx_data.begin(), idx_data.end());
+		idx_data.erase(std::unique(idx_data.begin(), idx_data.end()), idx_data.end());
 		
 		try {
 			_local_pgm = new pgm::PGMIndex<double, 16>(idx_data);
 		} catch (...) {
-			_local_pgm = NULL;
+			for (size_t sz=idx_data.size()-1,i=1; i<sz; ++i) {
+				if (idx_data[i] <= idx_data[i-1]) {
+					std::cout << i << ": " << std::fixed << std::setprecision(20) << idx_data[i-1] << " " << idx_data[i] << std::endl;
+				}
+			}
+			exit(1);
 		}
     }
 
@@ -91,8 +97,8 @@ class Bucket {
 				}
 			}
 		} else {
-			auto min_key = std::get<SortDim>(box.min_corner());
-			auto max_key = std::get<SortDim>(box.max_corner());
+			auto min_key = box.min_corner()[SortDim];
+			auto max_key = box.max_corner()[SortDim];
 			auto range_lo = this->_local_pgm->search(min_key);
 			auto range_hi = this->_local_pgm->search(max_key);
 
@@ -105,19 +111,21 @@ class Bucket {
     }
 };
 
-Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
+Flood(Points& points, size_t _SortDim) : _data(points), bucket_size((points.size() + K - 1)/K) {
+	this->SortDim = _SortDim;
     std::cout << "Construct Flood " << "K=" << K << " Epsilon=" << Eps << " SortDim=" << SortDim << std::endl;
 
     auto start = std::chrono::steady_clock::now();
 
     // dimension offsets when computing bucket ID
-    for (size_t i=0; i<Dim-1; ++i) {
-        this->dim_offset[i] = bench::common::ipow(K, i);
+    for (size_t i=0,j=0; i<Dim; ++i) {
+		if (i == SortDim) continue;
+        this->dim_offset[i] = bench::common::ipow(K, j++);
     }
 
     // sort points by SortDim
     std::sort(_data.begin(), _data.end(), [](auto& p1, auto& p2) {
-        return std::get<SortDim>(p1) < std::get<SortDim>(p2);
+        return p1[SortDim] < p2[SortDim];
     });
 
     // boundaries of each dimension
@@ -127,12 +135,13 @@ Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
     // train model on dimension 1 -- Dim-1
     std::vector<double> idx_data;
     idx_data.reserve(points.size());
-    for (size_t i=0; i<Dim-1; ++i) {
+    for (size_t d=0; d<Dim; ++d) {
+		if (d == SortDim) continue;
+		
         for (const auto& p : _data) {
-            mins[i] = std::min(p[i], mins[i]);
-            maxs[i] = std::max(p[i], maxs[i]);
-
-            idx_data.emplace_back(p[i]);
+            mins[d] = std::min(p[d], mins[d]);
+            maxs[d] = std::max(p[d], maxs[d]);
+            idx_data.emplace_back(p[d]);
         }
 		
 		std::sort(idx_data.begin(), idx_data.end());
@@ -148,12 +157,12 @@ Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
 			}
 		}
 		idx_data.erase(std::unique(idx_data.begin(), idx_data.end()), idx_data.end());
-		maxs[i] = std::min(maxs[i], *std::max_element(idx_data.begin(), idx_data.end()));
-		
+		maxs[d] = std::min(maxs[d], *std::max_element(idx_data.begin(), idx_data.end()));
 		
 		try {
-			this->indexes[i] = new Index(idx_data);
+			this->indexes[d] = new Index(idx_data);
 		} catch (...) {
+			std::cout << "build index failed" << std::endl;
 			for (size_t sz=idx_data.size()-1,i=1; i<sz; ++i) {
 				if (idx_data[i] <= idx_data[i-1]) {
 					std::cout << i << ": " << std::fixed << std::setprecision(20) << idx_data[i-1] << " " << idx_data[i] << std::endl;
@@ -161,14 +170,14 @@ Flood(Points& points) : _data(points), bucket_size((points.size() + K - 1)/K) {
 			}
 			exit(1);
 		}
-		std::cout << "Index Dim = " << i << std::endl;
+		std::cout << "Index Dim = " << d << std::endl;
 
         idx_data.clear();
     }
 
-
     // note data are sorted by SortDim
     for (auto& p : _data) {
+		assert(compute_id(p) < buckets.size());
         buckets[compute_id(p)].insert(p);
     }
 
@@ -193,6 +202,7 @@ Points range_query(Box& box) {
     Points result;
     for (auto& range : ranges) {
         for (auto idx=range.first; idx<=range.second; ++idx) {
+			assert(idx < this->buckets.size());
             this->buckets[idx].search(result, box);
         }
     }
@@ -211,7 +221,8 @@ inline size_t count() {
 inline size_t index_size() {
     // size of dimension-level learned index
     size_t cdf_size = 0;
-    for (size_t i=0; i<Dim-1; ++i) {
+    for (size_t i=0; i<Dim; ++i) {
+		if (i == SortDim) continue;
         cdf_size += this->indexes[i]->size_in_bytes();
     }
 
@@ -228,7 +239,8 @@ inline size_t index_size() {
 
 
 ~Flood() {
-    for (size_t i=0; i<Dim-1; ++i) {
+    for (size_t i=0; i<Dim; ++i) {
+		if (i == SortDim) continue;
         delete this->indexes[i];
     }
 }
@@ -236,38 +248,36 @@ inline size_t index_size() {
 
 private:
 Points& _data;
-std::array<Index*, Dim-1> indexes;
+std::array<Index*, Dim> indexes;
 std::array<Bucket, bench::common::ipow(K, Dim-1)> buckets;
-std::array<size_t, Dim-1> dim_offset;
+std::array<size_t, Dim> dim_offset;
 
-std::array<double, Dim-1> mins;
-std::array<double, Dim-1> maxs;
+std::array<double, Dim> mins;
+std::array<double, Dim> maxs;
 
 const size_t bucket_size;
 
 inline void find_intersect_ranges(std::vector<std::pair<size_t, size_t>>& ranges, Box& qbox) {
-    if (Dim == 2) {
-        ranges.emplace_back(get_dim_idx(qbox.min_corner(), 0), get_dim_idx(qbox.max_corner(), 0));
-    } else {
-        // search range on the 1-st dimension
-        ranges.emplace_back(get_dim_idx(qbox.min_corner(), 0), get_dim_idx(qbox.max_corner(), 0));
-        
-        // find all intersect ranges
-        for (size_t i=1; i<Dim-1; ++i) {
-            auto start_idx = get_dim_idx(qbox.min_corner(), i);
-            auto end_idx = get_dim_idx(qbox.max_corner(), i);
+	// find all intersect ranges
+	for (size_t i=0, j=0; i<Dim; ++i) {
+		if (i == SortDim) continue;
+		if (j++ == 0) {
+			ranges.emplace_back(get_dim_idx(qbox.min_corner(), i), get_dim_idx(qbox.max_corner(), i));
+			continue;
+		}
+		auto start_idx = get_dim_idx(qbox.min_corner(), i);
+		auto end_idx = get_dim_idx(qbox.max_corner(), i);
 
-            std::vector<std::pair<size_t, size_t>> temp_ranges;
-            for (auto idx=start_idx; idx<=end_idx; ++idx) {
-                for (size_t j=0; j<ranges.size(); ++j) {
-                    temp_ranges.emplace_back(ranges[j].first + idx*dim_offset[i], ranges[j].second + idx*dim_offset[i]);
-                }
-            }
+		std::vector<std::pair<size_t, size_t>> temp_ranges;
+		for (auto idx=start_idx; idx<=end_idx; ++idx) {
+			for (size_t j=0; j<ranges.size(); ++j) {
+				temp_ranges.emplace_back(ranges[j].first + idx*dim_offset[i], ranges[j].second + idx*dim_offset[i]);
+			}
+		}
 
-            // update the range vector
-            ranges = temp_ranges;
-        }
-    }
+		// update the range vector
+		ranges = temp_ranges;
+	}
 }
 
 // locate the bucket on d-th dimension using binary search
@@ -285,15 +295,17 @@ inline size_t get_dim_idx(Point& p, size_t d) {
 inline size_t compute_id(Point& p) {
     size_t id = 0;
 
-    for (size_t i=0; i<Dim-1; ++i) {
+    for (size_t i=0; i<Dim; ++i) {
+		if (i == SortDim) continue;
         auto current_idx = get_dim_idx(p, i);
         id += current_idx * dim_offset[i];
     }
 
     return id;
 }
-
-
 };
+
+template<size_t Dim, size_t K, size_t Eps>
+size_t Flood<Dim, K, Eps>::SortDim;
 }
 }

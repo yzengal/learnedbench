@@ -350,7 +350,7 @@ int main(int argc, char **argv) {
 
     if (index.compare("flood") == 0) {
         assert(idx_set.flood != nullptr);
-        if (mode.compare("range") == 0) {
+        if (mode.compare("range") == 0 || mode.compare("all") == 0) {
             bench::query::batch_range_queries(*(idx_set.flood), range_queries);
             return 0;
         }

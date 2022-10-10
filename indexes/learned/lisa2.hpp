@@ -119,11 +119,15 @@ LISA2(Points& points) {
 		while (i<sz && projections[i]==projections[j]) ++i;
 		if (i - j > 1) {
 			double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
-			delta /= (i - j);
+			delta /= (i - j + 1);
 			for (size_t k=j; k<i; ++k) 
 				projections[k] += delta * (k-j);
 		}
     }
+    
+	// train 1-D learned index on projections
+	std::sort(projections.begin(), projections.end());
+	projections.erase(std::unique(projections.begin(), projections.end()), projections.end());
     
     // train 1-D learned index on projections
     this->_pgm_ptr = new PGMIdx(projections);

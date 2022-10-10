@@ -99,6 +99,42 @@ elseif(TESTUPDATE)
   target_link_libraries(bench3dupdate_toronto ${TPIE_LIBRARIES} Boost::program_options pthread -ltcmalloc -lsnappy)
   target_compile_definitions(bench3dupdate_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
   
+elseif(TESTTUNE)
+
+	# the other benchmarks are compiled using cxx17 (required by PGM-Index)
+	set(CMAKE_CXX_STANDARD 17)
+	set(CMAKE_CXX_STANDARD_REQUIRED ON)
+	include_directories(${Boost_INCLUDE_DIR} ${TPIE_INCLUDE_DIRS})
+  
+	add_executable(bench2dworkload_fs bench/bench_workload.cpp)
+	target_link_libraries(bench2dworkload_fs ${TPIE_LIBRARIES} Boost::program_options pthread -ltcmalloc -lsnappy)
+	target_compile_definitions(bench2dworkload_fs PUBLIC PARTITION_NUM=60)
+
+	add_executable(bench2dworkload_osm bench/bench_workload.cpp)
+	target_link_libraries(bench2dworkload_osm ${TPIE_LIBRARIES} Boost::program_options GEOS::geos pthread -ltcmalloc -lsnappy)
+	target_compile_definitions(bench2dworkload_osm PUBLIC PARTITION_NUM=250)
+
+	add_executable(bench3dworkload_toronto bench/bench_workload.cpp)
+	target_link_libraries(bench3dworkload_toronto ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+	target_compile_definitions(bench3dworkload_toronto PUBLIC BENCH_DIM=3 PARTITION_NUM=20)
+	
+	# add_executable(bench2dworkload_default bench/bench_workload.cpp)
+    # target_link_libraries(bench2dworkload_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    # target_compile_definitions(bench2dworkload_default PUBLIC PARTITION_NUM=100)
+	
+	# add_executable(bench4dworkload_default bench/bench_workload.cpp)
+    # target_link_libraries(bench4dworkload_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    # target_compile_definitions(bench4dworkload_default PUBLIC BENCH_DIM=4 PARTITION_NUM=10)
+
+    # add_executable(bench6dworkload_default bench/bench_workload.cpp)
+    # target_link_libraries(bench6dworkload_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    # target_compile_definitions(bench6dworkload_default PUBLIC BENCH_DIM=6 PARTITION_NUM=5)
+
+    # add_executable(bench8dworkload_default bench/bench_workload.cpp)
+    # target_link_libraries(bench8dworkload_default ${TPIE_LIBRARIES} Boost::program_options  pthread  -ltcmalloc -lsnappy)
+    # target_compile_definitions(bench8dworkload_default PUBLIC BENCH_DIM=8 PARTITION_NUM=4)
+	
+  
 elseif(TESTJOIN)
 
   # the other benchmarks are compiled using cxx17 (required by PGM-Index)

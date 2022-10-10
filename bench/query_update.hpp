@@ -219,7 +219,7 @@ static void batch_update_queries(Index& index, vec_of_point_t<Dim>& points, vec_
 		}
 	}
 	
-	std::cout << "Insert Avg. Time: " << index.get_avg_insert_time() << " [us] " << index.get_insert_count() << std::endl;
+	std::cout << std::fixed << std::setprecision(8) << "Insert Avg. Time: " << index.get_avg_insert_time() << " [us] " << index.get_insert_time() << " " << index.get_insert_count() << std::endl;
 	std::cout << "Erase Avg. Time: " << index.get_avg_erase_time() << " [us] " << index.get_erase_count() << std::endl;
 	std::cout << "Range Queries Avg. Time: " << index.get_avg_range_time() << " [us] " << index.get_range_count() << std::endl;
 	std::cout << "Knn Queries Avg. Time: " << index.get_avg_knn_time() << " [us] " << index.get_knn_count() << std::endl;

@@ -115,15 +115,27 @@ LISA(Points& points) {
 		while (i<sz && projections[i]==projections[j]) ++i;
 		if (i - j > 1) {
 			double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
-			delta /= (i - j);
+			delta /= (i - j + 1);
 			for (size_t k=j; k<i; ++k) 
 				projections[k] += delta * (k-j);
 		}
     }
     
 	// train 1-D learned index on projections
-	this->_pgm_ptr = new PGMIdx(projections);
-
+	std::sort(projections.begin(), projections.end());
+	projections.erase(std::unique(projections.begin(), projections.end()), projections.end());
+	
+	try {
+		this->_pgm_ptr = new PGMIdx(projections);
+	} catch (...) {
+		for (size_t sz=projections.size()-1,i=1; i<sz; ++i) {
+			if (projections[i] <= projections[i-1]) {
+				std::cout << i << ": " << std::fixed << std::setprecision(20) << projections[i-1] << " " << projections[i] << std::endl;
+			}
+		}
+		exit(1);
+	}
+	
     auto end = std::chrono::steady_clock::now();
     build_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "Build Time: " << get_build_time() << " [ms]" << std::endl;
