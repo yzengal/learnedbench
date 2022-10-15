@@ -8,6 +8,7 @@ model_path/
 
 # experiment results
 *.pdf
+log
 results.tar.gz
 results.zip
 results/
