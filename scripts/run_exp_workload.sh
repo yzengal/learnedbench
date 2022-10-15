@@ -40,25 +40,3 @@ do
     ${BENCH2D_OSM} ${index} "${REAL_DATA_PATH}$data" 62734869 "all" > "${RESULT_PATH}${index}_${data}"
 done
 exit
-
-# for data in "uniform_20m_2_1" "gaussian_20m_2_1" "lognormal_20m_2_1"
-# do
-    # for index in "flood"
-    # do
-        # echo "Benchmark ${index} dataset ${data}"
-        # ${BENCH2D_DEFAULT} ${index} "${DEFAULT_SYN_DATA_PATH}$data" 20000000 "all" > "${RESULT_PATH}${index}_${data}"
-    # done
-# done
-
-for dist in "uniform" "gaussian" "lognormal"
-do
-    for k in 4 6 8
-    do
-        for index in "flood"
-        do
-            echo "Benchmark ${index} dataset ${dist}_${k} by ${BENCH_BIN_PATH}bench${k}d${TEST_CASE}_default"
-            "${BENCH_BIN_PATH}bench${k}d${TEST_CASE}_default" ${index} "${SYN_DATA_PATH}${dist}_20m_${k}_1" 20000000 "all" > "${RESULT_PATH}${index}_${dist}_20m_${k}"
-        done
-    done
-done
-exit

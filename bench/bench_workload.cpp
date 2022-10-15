@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
     std::string index = argv[1]; // index name
     std::string fname = argv[2]; // data file name
     size_t N = std::stoi(argv[3]); // dataset size
-    std::string mode = argv[4]; // bench mode {"range", "knn", "all"}
+    std::string mode = argv[4]; // bench mode {"range", "all"}
 
     std::cout << "====================================" << std::endl;
     std::cout << "Load data: " << fname << std::endl;

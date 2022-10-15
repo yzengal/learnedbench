@@ -122,16 +122,19 @@ BenchPoints knn_query(BenchPoint& point, size_t k) {
     return results;
 }
 
-void __insert(const Point& point) {
-	this->_rsmi->insert(*_exp_recorder, point);
+void __insert(const BenchPoint& point) {
+	rsmientities::Point _point(std::get<0>(point), std::get<1>(point));
+	this->_rsmi->insert(*_exp_recorder, _point);
 }
 
 		
-bool __erase(const Point& point) {
-	this->_rsmi->remove(*_exp_recorder, point);
+bool __erase(const BenchPoint& point) {
+	rsmientities::Point _point(std::get<0>(point), std::get<1>(point));
+	this->_rsmi->remove(*_exp_recorder, _point);
+	return false;
 }
 
-void insert(Point& point) {
+void insert(const BenchPoint& point) {
 	auto start = std::chrono::steady_clock::now();
 	
 	__insert(point);
@@ -141,7 +144,7 @@ void insert(Point& point) {
     insert_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 }
 
-bool erase(Point& point) {
+bool erase(const BenchPoint& point) {
 	auto start = std::chrono::steady_clock::now();
 	
 	bool ret = __erase(point);

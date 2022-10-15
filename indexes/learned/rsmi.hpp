@@ -129,6 +129,7 @@ void insert(const Point& point) {
 		
 bool erase(const Point& point) {
 	this->_rsmi->remove(*_exp_recorder, point);
+	return true;
 }
 
 

@@ -131,16 +131,16 @@ void RSMI::build(ExpRecorder &exp_recorder, vector<Point> points)
             labels.push_back(point.index);
         }
         
-        // std::ifstream fin(this->model_path);
-        // if (!fin)
-        // {
+        std::ifstream fin(this->model_path);
+        if (!fin)
+        {
             net->train_model(locations, labels);
-            // torch::save(net, this->model_path);
-        // }
-        // else
-        // {
-            // torch::load(net, this->model_path);
-        // }
+            torch::save(net, this->model_path);
+        }
+        else
+        {
+            torch::load(net, this->model_path);
+        }
         net->get_parameters();
 
         exp_recorder.non_leaf_node_num++;
@@ -258,16 +258,16 @@ void RSMI::build(ExpRecorder &exp_recorder, vector<Point> points)
             #endif
 
             this->model_path += "_" + to_string(level) + "_" + to_string(index);
-            // std::ifstream fin(this->model_path);
-            // if (!fin)
-            // {
+            std::ifstream fin(this->model_path);
+            if (!fin)
+            {
                 net->train_model(locations, labels);
-                // torch::save(net, this->model_path);
-            // }
-            // else
-            // {
-                // torch::load(net, this->model_path);
-            // }
+                torch::save(net, this->model_path);
+            }
+            else
+            {
+                torch::load(net, this->model_path);
+            }
             net->get_parameters();
 
             for (Point point : points)

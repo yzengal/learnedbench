@@ -1,9 +1,7 @@
 #!/bin/bash
 
-DATA_PATH="/data/yuxiang"
+DATA_PATH="../data/"
 BENCH_RSMI="../build/bin/bench_rsmi"
-
-
 REAL_DATA_PATH="${DATA_PATH}real/"
 SYN_DATA_PATH="${DATA_PATH}synthetic/"
 DEFAULT_SYN_DATA_PATH="${DATA_PATH}synthetic/Default/"

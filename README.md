@@ -83,6 +83,57 @@ cmake .. -DPROFILE=ON
 make
 ```
 
+Compile benchmark for complicated shape (rectangle):
+```sh
+rm -rf * # clear cmake cache
+cmake .. -DTESTBOX=ON
+make
+```
+
+Compile benchmark for data updates:
+```sh
+rm -rf * # clear cmake cache
+cmake .. -DTESTUPDATE=ON
+make
+```
+
+Compile benchmark for tuning flood with query workload:
+```sh
+rm -rf * # clear cmake cache
+cmake .. -DTESTTUNE=ON
+make
+```
+
+
+Compile benchmark for kNN join:
+```sh
+rm -rf * # clear cmake cache
+cmake .. -DTESTJOIN=ON
+make
+```
+
+
+Compile benchmark for replacing PGM with RMI:
+```sh
+rm -rf * # clear cmake cache
+cmake .. -DTESTRMI=ON
+make
+```
+
+Compile benchmark for tuning food with qdtree layout
+```sh
+rm -rf * # clear cmake cache
+cmake .. -DTESTFLOOD=ON
+make
+```
+
+Compile benchmark for octree
+```sh
+rm -rf * # clear cmake cache
+cmake .. -DTESTOCTREE=ON
+make
+```
+
 ## Run Experiments
 We prepare a script to download the real datasets and prepare synthetic datasets:
 ```sh
@@ -101,6 +152,20 @@ Run experiments by varying dim: `bash run_exp_dim.sh`
 Run experiments by varying eps: `bash run_exp_eps.sh`
 
 Run experiments of RSMI: `bash rsmi.sh`
+
+Run experiments of complicated shape: `bash run_exp_box.sh`
+
+Run experiments of data updates: `bash run_exp_update.sh` `bash run_exp_update_rsmi.sh`
+
+Run experiments of tuning flood with query workload: `bash run_exp_workload.sh`
+
+Run experiments of kNN join: `bash run_exp_join.sh` `bash run_exp_join_rsmi.sh`
+
+Run experiments of replacing PGM with RMI: `bash run_exp_rmi.sh`
+
+Run experiments of tuning food with qdtree layout: `bash run_exp_rmi.sh`
+
+Run experiments of octre: `bash run_exp_octree.sh`
 
 The results are put in `/project_root/results`, and the figure drawing Jupyter notebooks are put in `/project_root/figures`.
 
