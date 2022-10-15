@@ -2,13 +2,14 @@
 data/
 .download
 real_data.zip
-results.tar.gz
 
 # model files
 model_path/
 
 # experiment results
 *.pdf
+results.tar.gz
+results.zip
 results/
 
 build2/
