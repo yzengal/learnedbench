@@ -111,16 +111,18 @@ LISA2(Points& points) {
     }
 
 	// make sure there is no duplicate keys
-    // for (size_t sz=projections.size()-1,i=0; i<sz; ) {
-		// size_t j = i++;
-		// while (i<sz && projections[i]==projections[j]) ++i;
-		// if (i - j > 1) {
-			// double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
-			// delta /= (i - j);
-			// for (size_t k=j; k<i; ++k) 
-				// projections[k] += delta * (k-j);
-		// }
-    // }
+    for (size_t sz=projections.size()-1,i=0; i<sz; ) {
+		size_t j = i++;
+		while (i<sz && projections[i]==projections[j]) ++i;
+		if (i - j > 1) {
+			double delta = (i==sz) ? 1.0 : (projections[i]-projections[j]);
+			delta /= (i - j);
+			for (size_t k=j; k<i; ++k) 
+				projections[k] += delta * (k-j);
+		}
+    }
+	std::sort(projections.begin(), projections.end());
+	projections.erase(std::unique(projections.begin(), projections.end()), projections.end());
 	
 	const double TOTAL_BUDGET = 153.12 * points.size() * Dim / (2*20000000.0);
     
